@@ -59,7 +59,13 @@ export default function PersonalDashboard() {
   const { data, isLoading, isError } = usePersonalDashboard(selectedUser?.id, periodKey);
 
   const goals = data?.goals ?? [];
-  const onTrackCount = goals.filter((g) => g.on_track === true).length;
+  // For paced goals use on_track; for non-paced (total/measurement) use proportional time elapsed
+  const proportionalThreshold = data
+    ? (data.days_elapsed / data.days_in_month) * 100
+    : 50;
+  const onTrackCount = goals.filter(
+    (g) => g.on_track === true || (g.on_track === null && g.percentage >= proportionalThreshold),
+  ).length;
   const totalCount = goals.length;
   const avgPct =
     totalCount > 0

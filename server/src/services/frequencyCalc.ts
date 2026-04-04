@@ -21,7 +21,25 @@ export function calcProgress(
     const span = Math.abs(start - targetValue);
     if (span === 0) return { percentage: 0, expectedValue: null, onTrack: null };
     const moved = Math.abs(start - currentValue);
-    return { percentage: (moved / span) * 100, expectedValue: null, onTrack: null };
+
+    // Linear pacing: where should we be today?
+    const monthStart = parseISO(`${periodKey}-01`);
+    const daysInMonth = getDaysInMonth(monthStart);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+    const ref = referenceDate ?? new Date();
+    const clampedRef = ref < monthStart ? monthStart : ref > monthEnd ? monthEnd : ref;
+    const daysElapsed = differenceInDays(clampedRef, monthStart) + 1;
+    const expectedValue = start + (targetValue - start) * (daysElapsed / daysInMonth);
+    // On track: if reducing (target < start) current must be ≤ expected; else ≥
+    const onTrack = targetValue < start
+      ? currentValue <= expectedValue
+      : currentValue >= expectedValue;
+
+    return {
+      percentage: (moved / span) * 100,
+      expectedValue: Math.round(expectedValue * 100) / 100,
+      onTrack,
+    };
   }
 
   if (frequencyType === 'total') {

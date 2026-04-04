@@ -56,9 +56,9 @@ const defaultForm: FormState = {
 };
 
 const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
-  { value: 'total',  label: 'Total for the month', description: 'Track a total amount for the month' },
-  { value: 'daily',  label: 'Daily target',         description: 'Tracks pacing: target × days elapsed' },
-  { value: 'weekly', label: 'Weekly target',        description: 'Tracks pacing: target × weeks elapsed' },
+  { value: 'total',  label: 'Monthly total',  description: 'A fixed total for the whole month — no daily/weekly pacing (e.g. 20 lectures total)' },
+  { value: 'daily',  label: 'Daily target',   description: 'Amount per day — paces against days elapsed (e.g. 1 lecture/day ≈ 30 total in April)' },
+  { value: 'weekly', label: 'Weekly target',  description: 'Amount per week — paces against weeks elapsed (e.g. 3 lectures/week ≈ 15 total in April)' },
 ];
 
 export default function GoalFormDialog({
@@ -80,6 +80,22 @@ export default function GoalFormDialog({
 
   const [form, setForm] = useState<FormState>(defaultForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+
+  // Derive template for the currently selected category
+  const selectedTemplate = form.category_id
+    ? (() => {
+        const cat = categories.find((c) => c.id === form.category_id);
+        return cat ? GOAL_TEMPLATES.find((t) => t.label.toLowerCase() === cat.name.toLowerCase()) : undefined;
+      })()
+    : undefined;
+
+  // Unit options: from template when available, empty array otherwise (free-text fallback)
+  const unitOptions: string[] = selectedTemplate?.units ?? [];
+  // If editing and current unit isn't in the list, include it so it remains selectable
+  const allUnitOptions =
+    unitOptions.length > 0 && form.unit && !unitOptions.includes(form.unit)
+      ? [...unitOptions, form.unit]
+      : unitOptions;
 
   useEffect(() => {
     if (open) {
@@ -110,7 +126,7 @@ export default function GoalFormDialog({
       category_id: catId,
       ...(template && {
         goal_type: template.goal_type,
-        unit: template.unit,
+        unit: template.units[0] ?? template.unit,
         frequency_type: template.frequency_type,
         start_value: '',
       }),
@@ -119,7 +135,7 @@ export default function GoalFormDialog({
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormState, string>> = {};
-    if (!form.title.trim()) newErrors.title = 'Title is required';
+    if (!form.category_id) newErrors.category_id = 'Category is required';
     if (!form.target_value || isNaN(Number(form.target_value)) || Number(form.target_value) <= 0) {
       newErrors.target_value = 'Enter a positive number';
     }
@@ -174,36 +190,26 @@ export default function GoalFormDialog({
 
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-          <TextField
-            label="Title"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            error={!!errors.title}
-            helperText={errors.title}
-            autoFocus
-            fullWidth
-            placeholder="e.g. Read 10 books"
-          />
 
-          <FormControl fullWidth size="small">
-            <InputLabel id="category-label">Category (optional)</InputLabel>
+          {/* Category — required, drives goal_type/unit/frequency defaults */}
+          <FormControl fullWidth size="small" error={!!errors.category_id}>
+            <InputLabel id="category-label">Category</InputLabel>
             <Select
               labelId="category-label"
               value={form.category_id}
-              label="Category (optional)"
+              label="Category"
               onChange={(e) => handleCategoryChange(e.target.value)}
             >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
               {categories.map((cat) => (
                 <MenuItem key={cat.id} value={cat.id}>
                   {cat.icon ? `${cat.icon} ` : ''}{cat.name}
                 </MenuItem>
               ))}
             </Select>
+            {errors.category_id && <FormHelperText>{errors.category_id}</FormHelperText>}
           </FormControl>
 
+          {/* Target + Unit */}
           <Stack direction="row" spacing={2}>
             <TextField
               label="Target"
@@ -215,16 +221,43 @@ export default function GoalFormDialog({
               inputProps={{ min: 0, step: 'any' }}
               sx={{ flex: 1 }}
             />
-            <TextField
-              label="Unit"
-              value={form.unit}
-              onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-              error={!!errors.unit}
-              helperText={errors.unit}
-              placeholder="books, km, mins…"
-              sx={{ flex: 1 }}
-            />
+            {allUnitOptions.length > 0 ? (
+              <FormControl size="small" error={!!errors.unit} sx={{ flex: 1 }}>
+                <InputLabel id="unit-label">Unit</InputLabel>
+                <Select
+                  labelId="unit-label"
+                  value={form.unit}
+                  label="Unit"
+                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                >
+                  {allUnitOptions.map((u) => (
+                    <MenuItem key={u} value={u}>{u}</MenuItem>
+                  ))}
+                </Select>
+                {errors.unit && <FormHelperText>{errors.unit}</FormHelperText>}
+              </FormControl>
+            ) : (
+              <TextField
+                label="Unit"
+                value={form.unit}
+                onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                error={!!errors.unit}
+                helperText={errors.unit}
+                placeholder="books, km, mins…"
+                sx={{ flex: 1 }}
+              />
+            )}
           </Stack>
+
+          {/* Note — optional */}
+          <TextField
+            label="Note (optional)"
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            fullWidth
+            placeholder="e.g. Before bed, outdoor only…"
+            helperText="Any extra context for this goal"
+          />
 
           {/* Start value — measurement goals only */}
           {form.goal_type === 'measurement' && (

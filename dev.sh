@@ -120,9 +120,13 @@ run_seed() {
 }
 
 check_seeded() {
+  # Derive DB name from DATABASE_URL (last path segment), defaulting to 'goals'
+  local dbname
+  dbname=$(echo "${DATABASE_URL:-}" | sed 's|.*/||' | tr -d '[:space:]')
+  dbname="${dbname:-goals}"
   local count
   count=$(docker compose "${COMPOSE_FILES[@]}" exec -T db \
-    psql -U goals -d goals -tAc "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
+    psql -U goals -d "$dbname" -tAc "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
   count=$(echo "$count" | tr -d '[:space:]')
   if [[ "$count" -eq 0 ]]; then
     warn "Database is empty — running seed..."

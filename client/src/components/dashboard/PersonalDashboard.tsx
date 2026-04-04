@@ -8,20 +8,45 @@ import {
   Stack,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import FlagIcon from '@mui/icons-material/Flag';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PercentIcon from '@mui/icons-material/Percent';
+import { getHours } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { usePeriodContext } from '../../context/PeriodContext';
 import { usePersonalDashboard } from '../../hooks/useDashboard';
+import { periodKeyToLabel } from '../../utils/dates';
 import GoalCard from './GoalCard';
 import GoalFormDialog from '../goals/GoalFormDialog';
 
+function greeting(): string {
+  const h = getHours(new Date());
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 function GoalCardSkeleton() {
   return (
-    <Box sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', p: 2 }}>
-      <Skeleton variant="text" width="60%" height={24} />
-      <Skeleton variant="text" width="40%" height={16} />
-      <Skeleton variant="rectangular" height={8} sx={{ borderRadius: 4, my: 1 }} />
-      <Skeleton variant="text" width="30%" height={16} />
-      <Skeleton variant="rectangular" width={120} height={32} sx={{ mt: 1, borderRadius: 1 }} />
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderLeft: '4px solid',
+        borderLeftColor: 'divider',
+        p: 2,
+      }}
+    >
+      <Skeleton variant="text" width="60%" height={22} sx={{ mb: 0.5 }} />
+      <Skeleton variant="text" width="35%" height={16} sx={{ mb: 1.5 }} />
+      <Box display="flex" alignItems="center" gap={1.5}>
+        <Skeleton variant="rectangular" sx={{ flex: 1, height: 10, borderRadius: 6 }} />
+        <Skeleton variant="rectangular" width={44} height={22} sx={{ borderRadius: '11px' }} />
+      </Box>
+      <Skeleton variant="text" width="45%" height={16} sx={{ mt: 1 }} />
+      <Skeleton variant="rectangular" width={110} height={32} sx={{ mt: 1.5, borderRadius: 1.5 }} />
     </Box>
   );
 }
@@ -36,6 +61,10 @@ export default function PersonalDashboard() {
   const goals = data?.goals ?? [];
   const onTrackCount = goals.filter((g) => g.on_track === true).length;
   const totalCount = goals.length;
+  const avgPct =
+    totalCount > 0
+      ? Math.round(goals.reduce((sum, g) => sum + g.percentage, 0) / totalCount)
+      : 0;
 
   if (isError) {
     return (
@@ -47,34 +76,62 @@ export default function PersonalDashboard() {
 
   return (
     <Box>
-      {/* Header row */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5" fontWeight={700}>
-          My Goals
-        </Typography>
-        <Box display="flex" alignItems="center" gap={1}>
-          {!isLoading && totalCount > 0 && (
+      {/* Greeting header */}
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2.5}>
+        <Box>
+          <Typography variant="h5" fontWeight={700}>
+            {greeting()}, {selectedUser?.display_name ?? ''} 👋
+          </Typography>
+          {!isCurrentPeriod && (
             <Chip
-              label={`${onTrackCount}/${totalCount} on track`}
-              color={onTrackCount === totalCount ? 'success' : 'default'}
+              label="Past period — read only"
               size="small"
+              variant="outlined"
+              color="warning"
+              sx={{ mt: 0.75 }}
             />
           )}
-          {isCurrentPeriod && (
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => setAddGoalOpen(true)}
-              sx={{ display: { xs: 'none', sm: 'flex' } }}
-            >
-              Add Goal
-            </Button>
-          )}
         </Box>
+        {isCurrentPeriod && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setAddGoalOpen(true)}
+            sx={{ display: { xs: 'none', sm: 'flex' }, flexShrink: 0 }}
+          >
+            Add Goal
+          </Button>
+        )}
       </Box>
 
-      {/* Loading */}
+      {/* Stats bar */}
+      {!isLoading && totalCount > 0 && (
+        <Box display="flex" gap={1} flexWrap="wrap" mb={2.5}>
+          <Chip
+            icon={<FlagIcon sx={{ fontSize: 15 }} />}
+            label={`${totalCount} goal${totalCount !== 1 ? 's' : ''}`}
+            variant="outlined"
+            size="small"
+          />
+          <Chip
+            icon={<CheckCircleIcon sx={{ fontSize: 15 }} />}
+            label={`${onTrackCount} on track`}
+            variant="outlined"
+            size="small"
+            color={onTrackCount === totalCount && totalCount > 0 ? 'success' : 'default'}
+          />
+          <Chip
+            icon={<PercentIcon sx={{ fontSize: 15 }} />}
+            label={`${avgPct}% avg`}
+            variant="outlined"
+            size="small"
+            color={avgPct >= 80 ? 'success' : avgPct >= 50 ? 'warning' : 'default'}
+          />
+        </Box>
+      )}
+
+      {/* Loading skeletons */}
       {isLoading && (
         <Stack spacing={2}>
           <GoalCardSkeleton />
@@ -93,8 +150,9 @@ export default function PersonalDashboard() {
           py={8}
           gap={2}
         >
-          <Typography color="text.secondary" variant="h6">
-            No goals yet
+          <TrackChangesIcon sx={{ fontSize: 56, color: 'primary.light' }} />
+          <Typography color="text.secondary" variant="h6" fontWeight={600}>
+            No goals for {periodKeyToLabel(periodKey)}
           </Typography>
           {isCurrentPeriod && (
             <Button
@@ -102,7 +160,7 @@ export default function PersonalDashboard() {
               startIcon={<AddIcon />}
               onClick={() => setAddGoalOpen(true)}
             >
-              Add your first goal
+              Create your first goal this month
             </Button>
           )}
         </Box>

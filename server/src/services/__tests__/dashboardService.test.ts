@@ -87,7 +87,7 @@ describe('getPersonalDashboard', () => {
 });
 
 describe('getGroupDashboard', () => {
-  it('returns summaries for all users', async () => {
+  it('returns users with full goal progress', async () => {
     mockQuery
       // Query 1: users
       .mockResolvedValueOnce({
@@ -98,19 +98,23 @@ describe('getGroupDashboard', () => {
         rows: [
           {
             id: 'goal-1',
+            title: 'Read books',
             frequency_type: 'total',
             target_value: '4.00',
             current_value: '4.00',
+            unit: 'books',
+            cat_id: null,
+            cat_name: null,
           },
         ],
       });
 
     const result = await getGroupDashboard(GROUP_ID, PERIOD, REF_DATE);
-    expect(result).toHaveLength(1);
-    expect(result[0].user.display_name).toBe('Alice');
-    expect(result[0].goals_summary.total_goals).toBe(1);
-    expect(result[0].goals_summary.completed).toBe(1);
-    expect(result[0].goals_summary.avg_percentage).toBeCloseTo(100);
+    expect(result.users).toHaveLength(1);
+    expect(result.users[0].user.display_name).toBe('Alice');
+    expect(result.users[0].goals).toHaveLength(1);
+    expect(result.users[0].goals[0].percentage).toBeCloseTo(100);
+    expect(result.users[0].goals[0].current_value).toBe(4);
   });
 
   it('handles user with no goals', async () => {
@@ -121,7 +125,6 @@ describe('getGroupDashboard', () => {
       .mockResolvedValueOnce({ rows: [] });
 
     const result = await getGroupDashboard(GROUP_ID, PERIOD, REF_DATE);
-    expect(result[0].goals_summary.total_goals).toBe(0);
-    expect(result[0].goals_summary.avg_percentage).toBe(0);
+    expect(result.users[0].goals).toHaveLength(0);
   });
 });

@@ -55,20 +55,22 @@ describe('GET /api/dashboard/personal', () => {
 
 describe('GET /api/dashboard/group', () => {
   it('returns group dashboard data', async () => {
-    const mockData = [
-      {
-        user: { id: USER_ID, display_name: 'Alice', avatar_color: '#1976d2' },
-        goals_summary: { total_goals: 3, completed: 1, on_track: 2, avg_percentage: 60 },
-      },
-    ];
+    const mockData = {
+      users: [
+        {
+          user: { id: USER_ID, display_name: 'Alice', avatar_color: '#1976d2' },
+          goals: [],
+        },
+      ],
+    };
     mockGroup.mockResolvedValueOnce(mockData);
 
     const res = await request(app).get(
       `/api/dashboard/group?group_id=${GROUP_ID}&period_key=2026-04`,
     );
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].user.display_name).toBe('Alice');
+    expect(res.body.users).toHaveLength(1);
+    expect(res.body.users[0].user.display_name).toBe('Alice');
   });
 
   it('returns 400 when group_id is missing', async () => {

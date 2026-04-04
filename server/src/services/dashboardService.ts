@@ -32,18 +32,17 @@ export interface PersonalDashboardResponse {
   goals: GoalWithProgress[];
 }
 
-export interface GroupDashboardUserSummary {
+export interface GroupDashboardUserEntry {
   user: {
     id: string;
     display_name: string;
     avatar_color: string;
   };
-  goals_summary: {
-    total_goals: number;
-    completed: number;
-    on_track: number;
-    avg_percentage: number;
-  };
+  goals: GoalWithProgress[];
+}
+
+export interface GroupDashboardResponse {
+  users: GroupDashboardUserEntry[];
 }
 
 export async function getPersonalDashboard(
@@ -124,65 +123,58 @@ export async function getGroupDashboard(
   groupId: string,
   periodKey: string,
   referenceDate?: Date,
-): Promise<GroupDashboardUserSummary[]> {
+): Promise<GroupDashboardResponse> {
+  const ref = referenceDate ?? new Date();
+
   const usersResult = await pool.query(
     `SELECT id, display_name, avatar_color FROM users WHERE group_id = $1 ORDER BY sort_order ASC`,
     [groupId],
   );
 
-  const summaries: GroupDashboardUserSummary[] = [];
-  const ref = referenceDate ?? new Date();
+  const users: GroupDashboardUserEntry[] = [];
 
-  for (const user of usersResult.rows) {
+  for (const userRow of usersResult.rows) {
     const goalsResult = await pool.query(
-      `SELECT g.*, COALESCE(SUM(pe.value), 0) AS current_value
+      `SELECT g.*, c.id AS cat_id, c.name AS cat_name, COALESCE(SUM(pe.value), 0) AS current_value
        FROM goals g
+       LEFT JOIN categories c ON g.category_id = c.id
        LEFT JOIN progress_entries pe ON pe.goal_id = g.id
        WHERE g.user_id = $1 AND g.period_key = $2
-       GROUP BY g.id
+       GROUP BY g.id, c.id, c.name
        ORDER BY g.created_at ASC`,
-      [user.id, periodKey],
+      [userRow.id, periodKey],
     );
 
-    const goals = goalsResult.rows;
-    let totalGoals = goals.length;
-    let completed = 0;
-    let onTrackCount = 0;
-    let totalPercentage = 0;
-
-    for (const goal of goals) {
-      const currentValue = parseFloat(goal.current_value);
-      const targetValue = parseFloat(goal.target_value);
+    const goals: GoalWithProgress[] = goalsResult.rows.map((row) => {
+      const currentValue = parseFloat(row.current_value);
+      const targetValue = parseFloat(row.target_value);
       const calc = calcProgress(
-        goal.frequency_type as FrequencyType,
+        row.frequency_type as FrequencyType,
         currentValue,
         targetValue,
         periodKey,
         ref,
       );
+      return {
+        id: row.id,
+        title: row.title,
+        category: row.cat_id ? { id: row.cat_id, name: row.cat_name } : null,
+        target_value: targetValue,
+        unit: row.unit,
+        frequency_type: row.frequency_type,
+        current_value: currentValue,
+        expected_value: calc.expectedValue,
+        percentage: Math.round(calc.percentage * 100) / 100,
+        on_track: calc.onTrack,
+        recent_entries: [],
+      };
+    });
 
-      totalPercentage += calc.percentage;
-      if (calc.percentage >= 100) completed++;
-      if (calc.onTrack === true) onTrackCount++;
-    }
-
-    const avgPercentage =
-      totalGoals > 0 ? Math.round((totalPercentage / totalGoals) * 100) / 100 : 0;
-
-    summaries.push({
-      user: {
-        id: user.id,
-        display_name: user.display_name,
-        avatar_color: user.avatar_color,
-      },
-      goals_summary: {
-        total_goals: totalGoals,
-        completed,
-        on_track: onTrackCount,
-        avg_percentage: avgPercentage,
-      },
+    users.push({
+      user: { id: userRow.id, display_name: userRow.display_name, avatar_color: userRow.avatar_color },
+      goals,
     });
   }
 
-  return summaries;
+  return { users };
 }

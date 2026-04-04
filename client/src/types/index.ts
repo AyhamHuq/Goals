@@ -67,14 +67,10 @@ export interface PersonalDashboardResponse {
 }
 
 export interface UserGoalSummary {
-  user: User;
+  user: Pick<User, 'id' | 'display_name' | 'avatar_color'>;
   goals: GoalWithProgress[];
 }
 
 export interface GroupDashboardResponse {
-  period_key: string;
-  days_in_month: number;
-  days_elapsed: number;
-  weeks_elapsed: number;
   users: UserGoalSummary[];
 }

@@ -82,12 +82,10 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
           </Box>
 
           <Typography variant="caption" color="text.secondary">
-            {goal.current_value} / {goal.frequency_type === 'total'
-              ? goal.target_value
-              : goal.expected_value !== null
-              ? `${goal.expected_value} expected`
-              : goal.target_value}{' '}
-            {goal.unit}
+            {goal.current_value} {goal.unit}
+            {goal.frequency_type !== 'total' && goal.expected_value !== null
+              ? ` · ${goal.expected_value.toFixed(1)} expected`
+              : ` / ${goal.target_value} ${goal.unit} total`}
           </Typography>
 
           {!readOnly && (

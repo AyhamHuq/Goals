@@ -1,0 +1,1 @@
+-- Placeholder: migrations are run by the server on startup

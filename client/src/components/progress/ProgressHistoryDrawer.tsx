@@ -7,7 +7,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   TextField,
   Button,
   Divider,
@@ -25,6 +24,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { GoalWithProgress, ProgressEntry } from '../../types';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
+import { useToast } from '../Toast';
 import { formatLoggedFor } from '../../utils/dates';
 
 interface ProgressHistoryDrawerProps {
@@ -78,20 +78,31 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);
   const updateProgress = useUpdateProgress();
   const deleteProgress = useDeleteProgress();
+  const { showToast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleSave = async (id: string, value: number, note: string) => {
     if (isNaN(value) || value <= 0) return;
-    await updateProgress.mutateAsync({
-      id,
-      data: { value, note: note.trim() || undefined },
-    });
+    try {
+      await updateProgress.mutateAsync({
+        id,
+        data: { value, note: note.trim() || undefined },
+      });
+      showToast({ message: 'Entry updated!', severity: 'success' });
+    } catch {
+      showToast({ message: 'Failed to update entry.', severity: 'error' });
+    }
     setEditingId(null);
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProgress.mutateAsync(id);
+    try {
+      await deleteProgress.mutateAsync(id);
+      showToast({ message: 'Entry deleted.', severity: 'info' });
+    } catch {
+      showToast({ message: 'Failed to delete entry.', severity: 'error' });
+    }
     setDeleteConfirmId(null);
   };
 
@@ -101,43 +112,92 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
         anchor="bottom"
         open={open}
         onClose={onClose}
-        PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70vh' } }}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            maxHeight: '70vh',
+          },
+        }}
       >
-        <Box sx={{ p: 2 }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-            <Typography variant="h6">{goal.title} — History</Typography>
+        {/* Handle bar */}
+        <Box display="flex" justifyContent="center" pt={1} pb={0.5}>
+          <Box
+            sx={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              bgcolor: 'grey.300',
+            }}
+          />
+        </Box>
+
+        <Box sx={{ px: 2, pb: 2 }}>
+          {/* Header */}
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{ flex: 1, mr: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+              title={goal.title}
+            >
+              {goal.title}
+            </Typography>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
           <Divider />
+
           {isLoading ? (
             <Box display="flex" justifyContent="center" py={4}>
               <CircularProgress size={28} />
             </Box>
           ) : entries.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-              No progress logged yet.
-            </Typography>
+            <Box py={4} textAlign="center">
+              <Typography color="text.secondary" variant="body2">
+                No entries yet — log your first progress above.
+              </Typography>
+            </Box>
           ) : (
             <List dense sx={{ overflow: 'auto' }}>
               {entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <ListItem disableGutters alignItems="flex-start">
+                  <ListItem disableGutters alignItems="flex-start" sx={{ py: 1 }}>
                     {editingId === entry.id ? (
-                      <EditRow
-                        entry={entry}
-                        unit={goal.unit}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    ) : (
-                      <>
-                        <ListItemText
-                          primary={`${entry.value} ${goal.unit}`}
-                          secondary={`${formatLoggedFor(entry.logged_for)}${entry.note ? ` — ${entry.note}` : ''}`}
+                      <Box width="100%">
+                        <EditRow
+                          entry={entry}
+                          unit={goal.unit}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
                         />
-                        <ListItemSecondaryAction>
+                      </Box>
+                    ) : (
+                      <Box display="flex" alignItems="flex-start" width="100%">
+                        {/* Date on left */}
+                        <Box flex={1} minWidth={0}>
+                          <Box display="flex" alignItems="baseline" gap={1.5}>
+                            <Typography variant="body2" fontWeight={700} sx={{ minWidth: 80 }}>
+                              {formatLoggedFor(entry.logged_for)}
+                            </Typography>
+                            <Typography variant="body2" color="text.primary" fontWeight={600}>
+                              {entry.value} {goal.unit}
+                            </Typography>
+                          </Box>
+                          {entry.note && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              display="block"
+                              sx={{ mt: 0.25 }}
+                            >
+                              {entry.note}
+                            </Typography>
+                          )}
+                        </Box>
+                        {/* Actions on right */}
+                        <Box display="flex" gap={0.25}>
                           <IconButton size="small" onClick={() => setEditingId(entry.id)}>
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -148,8 +208,8 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </ListItemSecondaryAction>
-                      </>
+                        </Box>
+                      </Box>
                     )}
                   </ListItem>
                   <Divider component="li" />
@@ -164,7 +224,9 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} maxWidth="xs">
         <DialogTitle>Delete entry?</DialogTitle>
         <DialogContent>
-          <Typography>This progress entry will be permanently deleted.</Typography>
+          <Typography variant="body2" color="text.secondary">
+            This progress entry will be permanently deleted.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>

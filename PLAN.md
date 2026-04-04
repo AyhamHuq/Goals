@@ -125,7 +125,7 @@ Goals/
 | 5 | Group Dashboard | ✅ Done |
 | 6 | History + Monthly Flow | ✅ Done |
 | 7 | Docker + Deployment config | ✅ Done |
-| 8 | Polish (loading/empty/error states, UI) | 🔄 In progress |
+| 8 | Polish (loading/empty/error states, UI) | ✅ Done |
 
 ## Verification
 

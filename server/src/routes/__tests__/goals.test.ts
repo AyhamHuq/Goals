@@ -24,6 +24,8 @@ const sampleGoal = {
   target_value: '4.00',
   unit: 'books',
   frequency_type: 'total',
+  goal_type: 'accumulation',
+  start_value: null,
   is_archived: false,
 };
 
@@ -83,6 +85,58 @@ describe('POST /api/goals', () => {
         frequency_type: 'hourly',
       });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/goals — measurement goal', () => {
+  it('creates a measurement goal with start_value', async () => {
+    const measurementGoal = { ...sampleGoal, goal_type: 'measurement', start_value: '90.00' };
+    mockQuery.mockResolvedValueOnce({ rows: [measurementGoal] });
+    const res = await request(app)
+      .post('/api/goals')
+      .send({
+        user_id: VALID_UUID2,
+        period_key: '2026-04',
+        title: 'Lose weight',
+        target_value: 75,
+        unit: 'kg',
+        frequency_type: 'total',
+        goal_type: 'measurement',
+        start_value: 90,
+      });
+    expect(res.status).toBe(201);
+  });
+
+  it('returns 400 when measurement goal is missing start_value', async () => {
+    const res = await request(app)
+      .post('/api/goals')
+      .send({
+        user_id: VALID_UUID2,
+        period_key: '2026-04',
+        title: 'Lose weight',
+        target_value: 75,
+        unit: 'kg',
+        frequency_type: 'total',
+        goal_type: 'measurement',
+        // start_value intentionally omitted
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it('accumulation goal without start_value succeeds', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [sampleGoal] });
+    const res = await request(app)
+      .post('/api/goals')
+      .send({
+        user_id: VALID_UUID2,
+        period_key: '2026-04',
+        title: 'Read books',
+        target_value: 4,
+        unit: 'books',
+        frequency_type: 'total',
+        goal_type: 'accumulation',
+      });
+    expect(res.status).toBe(201);
   });
 });
 

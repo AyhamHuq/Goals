@@ -62,7 +62,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
         logged_for: loggedFor,
         note: note.trim() || undefined,
       });
-      showToast({ message: 'Progress logged! 🎉', severity: 'success' });
+      showToast({ message: goal.goal_type === 'measurement' ? 'Measurement logged!' : 'Progress logged! 🎉', severity: 'success' });
       handleClose();
     } catch {
       showToast({ message: 'Failed to log progress. Try again.', severity: 'error' });
@@ -90,7 +90,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
           {/* Large centered value input */}
           <Box textAlign="center">
             <TextField
-              label={`Value (${goal.unit})`}
+              label={goal.goal_type === 'measurement' ? `Current ${goal.unit}` : `Value (${goal.unit})`}
               type="number"
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -101,6 +101,11 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
               fullWidth
               size="medium"
             />
+            {goal.goal_type === 'measurement' && goal.start_value != null && (
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                Started at {goal.start_value} {goal.unit} · Goal: {goal.target_value} {goal.unit}
+              </Typography>
+            )}
           </Box>
 
           <TextField
@@ -139,7 +144,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
                 : <CheckIcon />
             }
           >
-            Log Progress
+            {goal.goal_type === 'measurement' ? 'Log Measurement' : 'Log Progress'}
           </Button>
         </Box>
       </DialogActions>

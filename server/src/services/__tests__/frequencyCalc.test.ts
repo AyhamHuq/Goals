@@ -93,3 +93,49 @@ describe('calcProgress — weekly', () => {
     expect(result.percentage).toBeCloseTo(40);
   });
 });
+
+describe('calcProgress — measurement', () => {
+  it('halfway from 90kg to 75kg returns 50%', () => {
+    // span=15, moved=7.5
+    const result = calcProgress('total', 82.5, 75, PERIOD, undefined, 'measurement', 90);
+    expect(result.percentage).toBeCloseTo(50);
+    expect(result.expectedValue).toBeNull();
+    expect(result.onTrack).toBeNull();
+  });
+
+  it('goal exactly reached returns 100%', () => {
+    const result = calcProgress('total', 75, 75, PERIOD, undefined, 'measurement', 90);
+    expect(result.percentage).toBeCloseTo(100);
+  });
+
+  it('past target returns > 100%', () => {
+    // moved=16, span=15 → 106.67%
+    const result = calcProgress('total', 74, 75, PERIOD, undefined, 'measurement', 90);
+    expect(result.percentage).toBeGreaterThan(100);
+  });
+
+  it('no progress yet returns 0%', () => {
+    // currentValue = startValue → moved=0
+    const result = calcProgress('total', 90, 75, PERIOD, undefined, 'measurement', 90);
+    expect(result.percentage).toBe(0);
+  });
+
+  it('zero span (start equals target) returns 0% safely', () => {
+    const result = calcProgress('total', 75, 75, PERIOD, undefined, 'measurement', 75);
+    expect(result.percentage).toBe(0);
+  });
+
+  it('always returns null for expectedValue and onTrack', () => {
+    const result = calcProgress('total', 82.5, 75, PERIOD, undefined, 'measurement', 90);
+    expect(result.expectedValue).toBeNull();
+    expect(result.onTrack).toBeNull();
+  });
+
+  it('does not affect accumulation goals when goalType omitted', () => {
+    // regression: existing call signature unchanged
+    const result = calcProgress('total', 2, 8, PERIOD);
+    expect(result.percentage).toBeCloseTo(25);
+    expect(result.expectedValue).toBeNull();
+    expect(result.onTrack).toBeNull();
+  });
+});

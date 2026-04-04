@@ -1,4 +1,5 @@
 export type FrequencyType = 'total' | 'daily' | 'weekly';
+export type GoalType = 'accumulation' | 'measurement';
 
 export interface Group {
   id: string;
@@ -35,6 +36,8 @@ export interface Goal {
   target_value: number;
   unit: string;
   frequency_type: FrequencyType;
+  goal_type: GoalType;
+  start_value: number | null;
   is_archived: boolean;
   created_at: Date;
   updated_at: Date;

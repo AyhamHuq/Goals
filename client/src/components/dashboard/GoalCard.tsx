@@ -85,7 +85,10 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
 
           {/* Frequency label */}
           <Typography variant="caption" color="text.secondary" display="block" mb={1.25}>
-            {getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit)}
+            {goal.goal_type === 'measurement'
+              ? `Target: ${goal.target_value} ${goal.unit}`
+              : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit)
+            }
           </Typography>
 
           {/* Progress bar + percentage pill */}
@@ -114,10 +117,14 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
           {/* Bottom row: current/target | on-track indicator */}
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" color="text.secondary">
-              {goal.current_value} / {goal.target_value} {goal.unit}
-              {goal.frequency_type !== 'total' && goal.expected_value !== null
-                ? ` · ${goal.expected_value.toFixed(1)} expected`
-                : ''}
+              {goal.goal_type === 'measurement'
+                ? `${goal.current_value} ${goal.unit} → ${goal.target_value} ${goal.unit}`
+                : `${goal.current_value} / ${goal.target_value} ${goal.unit}${
+                    goal.frequency_type !== 'total' && goal.expected_value !== null
+                      ? ` · ${goal.expected_value.toFixed(1)} expected`
+                      : ''
+                  }`
+              }
             </Typography>
 
             {showPacing && (

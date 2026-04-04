@@ -21,7 +21,7 @@ export default function QuickLogButton({ goal, onLog }: QuickLogButtonProps) {
         onClick={() => setOpen(true)}
         sx={{ mt: 1 }}
       >
-        Log Progress
+        {goal.goal_type === 'measurement' ? 'Log Measurement' : 'Log Progress'}
       </Button>
       <ProgressLogDialog
         open={open}

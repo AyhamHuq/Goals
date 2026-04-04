@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { pool } from './src/db/pool';
 
 async function seed() {
@@ -14,15 +16,17 @@ async function seed() {
     const groupId = groupResult.rows[0].id;
     console.log(`Created group: Our Family (${groupId})`);
 
-    // Insert users with distinct MUI primary colors
-    const users = [
-      { name: 'Alice',   color: '#1976d2', order: 0 }, // MUI blue
-      { name: 'Bob',     color: '#388e3c', order: 1 }, // MUI green
-      { name: 'Charlie', color: '#d32f2f', order: 2 }, // MUI red
-      { name: 'Diana',   color: '#7b1fa2', order: 3 }, // MUI purple
-      { name: 'Eve',     color: '#f57c00', order: 4 }, // MUI orange
-      { name: 'Frank',   color: '#0288d1', order: 5 }, // MUI light blue
-    ];
+    // Insert users — names come from SEED_USERS env var (comma-separated)
+    const palette = ['#1976d2', '#388e3c', '#d32f2f', '#7b1fa2', '#f57c00', '#0288d1'];
+    const names = (process.env.SEED_USERS || 'Alice,Bob,Charlie,Diana,Eve,Frank')
+      .split(',')
+      .map(n => n.trim())
+      .filter(Boolean);
+    const users = names.map((name, i) => ({
+      name,
+      color: palette[i % palette.length],
+      order: i,
+    }));
 
     for (const user of users) {
       const result = await client.query<{ id: string }>(
@@ -35,14 +39,10 @@ async function seed() {
 
     // Insert categories with emoji icons
     const categories = [
-      { name: 'Fitness',      icon: '🏋️',  order: 0 },
-      { name: 'Reading',      icon: '📚',  order: 1 },
-      { name: 'Sleep',        icon: '😴',  order: 2 },
-      { name: 'Nutrition',    icon: '🥗',  order: 3 },
-      { name: 'Learning',     icon: '🧠',  order: 4 },
-      { name: 'Mindfulness',  icon: '🧘',  order: 5 },
-      { name: 'Finance',      icon: '💰',  order: 6 },
-      { name: 'Social',       icon: '🤝',  order: 7 },
+      { name: 'Weight Loss',     icon: '⚖️',  order: 0 },
+      { name: 'Arabic Learning', icon: '📖',  order: 1 },
+      { name: 'Fitness',         icon: '🏋️',  order: 2 },
+      { name: 'Quran',           icon: '🕌',  order: 3 },
     ];
 
     for (const cat of categories) {

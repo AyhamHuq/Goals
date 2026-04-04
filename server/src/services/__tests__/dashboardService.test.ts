@@ -86,6 +86,91 @@ describe('getPersonalDashboard', () => {
   });
 });
 
+describe('getPersonalDashboard — measurement goal', () => {
+  it('uses latest entry as current_value, not SUM', async () => {
+    mockQuery
+      // Query 1: goals
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'goal-m',
+            title: 'Lose weight',
+            frequency_type: 'total',
+            goal_type: 'measurement',
+            target_value: '75.00',
+            start_value: '90.00',
+            unit: 'kg',
+            cat_id: null,
+            cat_name: null,
+          },
+        ],
+      })
+      // Query 2: latest entry (measurement path)
+      .mockResolvedValueOnce({ rows: [{ value: '82.50' }] })
+      // Query 3: recent entries
+      .mockResolvedValueOnce({ rows: [{ id: 'pe-1', value: 82.5, logged_for: '2026-04-05', note: null }] });
+
+    const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
+    const goal = result.goals[0];
+    expect(goal.current_value).toBe(82.5);
+    expect(goal.percentage).toBeCloseTo(50); // |90-82.5| / |90-75| = 7.5/15 = 50%
+    expect(goal.on_track).toBeNull();
+    expect(goal.expected_value).toBeNull();
+  });
+
+  it('falls back to start_value when no entries logged', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'goal-m',
+            title: 'Lose weight',
+            frequency_type: 'total',
+            goal_type: 'measurement',
+            target_value: '75.00',
+            start_value: '90.00',
+            unit: 'kg',
+            cat_id: null,
+            cat_name: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] }) // no entries yet
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
+    const goal = result.goals[0];
+    // current_value falls back to start_value (90), so moved=0 → 0%
+    expect(goal.current_value).toBe(90);
+    expect(goal.percentage).toBe(0);
+  });
+
+  it('measurement goal has null expected_value and on_track', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'goal-m',
+            title: 'Lose weight',
+            frequency_type: 'total',
+            goal_type: 'measurement',
+            target_value: '75.00',
+            start_value: '90.00',
+            unit: 'kg',
+            cat_id: null,
+            cat_name: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ value: '80.00' }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
+    expect(result.goals[0].expected_value).toBeNull();
+    expect(result.goals[0].on_track).toBeNull();
+  });
+});
+
 describe('getGroupDashboard', () => {
   it('returns users with full goal progress', async () => {
     mockQuery

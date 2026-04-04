@@ -59,20 +59,23 @@ Goals/
 │   └── Dockerfile
 │
 ├── db/
-│   └── init.sql             # Placeholder — schema managed by migrate.ts
+│   ├── init.sql             # Placeholder — schema managed by migrate.ts
+│   └── init-sandbox.sql     # Creates goals_sandbox DB on first Postgres init
 │
-├── docker-compose.yml       # 3 services, healthchecks, env-var config
-├── .env.example             # All required vars
-└── dev.sh                   # Local dev setup script
+├── docker-compose.yml           # 3 services, healthchecks, env-var config
+├── docker-compose.sandbox.yml   # Override: points server at goals_sandbox DB
+├── .env.example                 # All required vars
+└── dev.sh                       # Local dev setup script
 ```
 
 ## Quick Start (Local Dev)
 
 ```bash
-./dev.sh
+./dev.sh          # normal mode — uses goals DB
+./dev.sh sandbox  # sandbox mode — uses goals_sandbox DB, real data untouched
 ```
 
-This starts the database, runs migrations + seed, and launches both dev servers.
+Normal mode starts the database, runs migrations + seed, and launches both dev servers. Sandbox mode does the same but against a separate `goals_sandbox` database. An amber banner appears in the UI when sandbox is active.
 
 ### Manual setup
 
@@ -115,7 +118,7 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 
 | Area | Key Endpoints |
 |------|--------------|
-| Health | `GET /health` |
+| Health | `GET /health` — includes `sandbox: bool` field |
 | Users | `GET /api/users`, `PATCH /api/users/:id/touch` |
 | Categories | `GET/POST /api/categories` |
 | Goals | `GET/POST /api/goals`, `PUT/DELETE /api/goals/:id`, `POST /api/goals/copy-from-previous` |

@@ -76,9 +76,10 @@ Mobile-first: BottomNav on mobile, full-width cards, fullScreen dialogs on small
 
 ```
 Goals/
-├── docker-compose.yml          # 3 services with healthchecks, env-var config, restart policies
-├── .env.example                # All required + optional vars (DB_PASSWORD, APP_PORT, Twilio)
-├── dev.sh                      # Local development setup script
+├── docker-compose.yml              # 3 services with healthchecks, env-var config, restart policies
+├── docker-compose.sandbox.yml      # Override: points server at goals_sandbox DB + sets SANDBOX=true
+├── .env.example                    # All required + optional vars (DB_PASSWORD, APP_PORT, Twilio)
+├── dev.sh                          # Local development setup script (start|sandbox|stop|reset|...)
 ├── client/                     (Vite + React + MUI)
 │   ├── src/
 │   │   ├── api/                (axios client functions per resource)
@@ -111,7 +112,8 @@ Goals/
 │   ├── seed.ts                 (1 group, 6 users, 8 categories)
 │   └── Dockerfile              (multi-stage; copies migrations SQL into dist/)
 └── db/
-    └── init.sql                (placeholder — schema managed by migrate.ts)
+    ├── init.sql                (placeholder — schema managed by migrate.ts)
+    └── init-sandbox.sql        (creates goals_sandbox DB on first Postgres init)
 ```
 
 ## Implementation Status
@@ -126,10 +128,12 @@ Goals/
 | 6 | History + Monthly Flow | ✅ Done |
 | 7 | Docker + Deployment config | ✅ Done |
 | 8 | Polish (loading/empty/error states, UI) | ✅ Done |
+| 9 | Sandbox mode (isolated goals_sandbox DB) | ✅ Done |
 
 ## Verification
 
 1. `./dev.sh` — starts DB, runs migrations + seed, launches dev servers
+   `./dev.sh sandbox` — same but against `goals_sandbox`; amber banner shows in UI
 2. `docker compose up --build` — all 3 services start healthy (check `/health`)
 3. Select a user → lands on personal dashboard with greeting
 4. Create a goal (each frequency type) → appears with correct pacing

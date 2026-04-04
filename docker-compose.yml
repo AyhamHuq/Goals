@@ -12,11 +12,10 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: goals
-      POSTGRES_PASSWORD: goals
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-goals}
       POSTGRES_DB: goals
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - goals-net
     healthcheck:
@@ -24,21 +23,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   server:
     build: ./server
-    env_file: .env
+    environment:
+      DATABASE_URL: postgres://goals:${DB_PASSWORD:-goals}@db:5432/goals
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-production}
+      TWILIO_ENABLED: ${TWILIO_ENABLED:-false}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
     depends_on:
       db:
         condition: service_healthy
     networks:
       - goals-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   client:
     build: ./client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     ports:
-      - "80:80"
+      - "${APP_PORT:-80}:80"
     networks:
       - goals-net
+    restart: unless-stopped

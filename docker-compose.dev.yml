@@ -1,0 +1,9 @@
+version: '3.9'
+
+# Dev override: expose PostgreSQL to the host so that host-side
+# `npm run migrate` and `npm run seed` can reach localhost:5432.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up db -d
+services:
+  db:
+    ports:
+      - "5432:5432"

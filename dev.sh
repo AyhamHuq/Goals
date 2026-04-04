@@ -20,6 +20,7 @@ warn()   { echo -e "${YELLOW}[goals]${NC} $*"; }
 error()  { echo -e "${RED}[goals]${NC} $*"; exit 1; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"  # ensure CWD is always valid (prevents npm uv_cwd errors in WSL)
 COMPOSE_FILES=(-f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.dev.yml")
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────

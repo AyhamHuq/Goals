@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { pool } from './pool';
 
-async function migrate() {
+export async function runMigrations(): Promise<void> {
   const client = await pool.connect();
   try {
     // Ensure tracking table exists
@@ -51,11 +51,15 @@ async function migrate() {
     console.log('All migrations complete.');
   } finally {
     client.release();
-    await pool.end();
   }
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+// Allow running directly: `tsx src/db/migrate.ts`
+if (require.main === module) {
+  runMigrations()
+    .then(() => pool.end())
+    .catch((err) => {
+      console.error('Migration failed:', err);
+      process.exit(1);
+    });
+}

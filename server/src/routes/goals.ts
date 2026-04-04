@@ -10,7 +10,7 @@ const createGoalSchema = z
     user_id: z.string().uuid(),
     category_id: z.string().uuid().optional(),
     period_key: z.string().regex(/^\d{4}-\d{2}$/),
-    title: z.string().min(1).max(255),
+    title: z.string().max(255).default(''),
     target_value: z.number().positive(),
     unit: z.string().min(1).max(50),
     frequency_type: z.enum(['total', 'daily', 'weekly']),
@@ -23,7 +23,7 @@ const createGoalSchema = z
   );
 
 const updateGoalSchema = z.object({
-  title: z.string().min(1).max(255).optional(),
+  title: z.string().max(255).optional(),
   target_value: z.number().positive().optional(),
   unit: z.string().min(1).max(50).optional(),
   frequency_type: z.enum(['total', 'daily', 'weekly']).optional(),

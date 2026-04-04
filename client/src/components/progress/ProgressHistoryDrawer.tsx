@@ -139,9 +139,12 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
             <Box flex={1} mr={1} minWidth={0}>
               <Typography variant="h6" noWrap>
-                {goal.goal_type === 'measurement'
-                  ? `Target: ${goal.target_value} ${goal.unit}`
-                  : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit)}
+                {(() => {
+                  const base = goal.goal_type === 'measurement'
+                    ? `Target: ${goal.target_value} ${goal.unit}`
+                    : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+                  return goal.category ? `${goal.category.name}: ${base}` : base;
+                })()}
               </Typography>
               {goal.title && (
                 <Typography variant="caption" color="text.secondary" noWrap display="block">

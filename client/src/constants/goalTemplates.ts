@@ -6,7 +6,8 @@ export interface GoalTemplate {
   icon: string;
   description: string;
   goal_type: GoalType;
-  unit: string;
+  unit: string;        // default unit (first selection)
+  units: string[];     // all available unit options
   frequency_type: FrequencyType;
   requiresStartValue: boolean;
 }
@@ -18,38 +19,31 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
     icon: '⚖️',
     description: 'Track your weight toward a goal',
     goal_type: 'measurement',
-    unit: 'kg',
+    unit: 'lbs',
+    units: ['lbs', 'kg'],
     frequency_type: 'total',
     requiresStartValue: true,
-  },
-  {
-    id: 'arabic-learning',
-    label: 'Arabic Learning',
-    icon: '📖',
-    description: 'Log Arabic lectures per week',
-    goal_type: 'accumulation',
-    unit: 'lectures',
-    frequency_type: 'weekly',
-    requiresStartValue: false,
   },
   {
     id: 'fitness',
     label: 'Fitness',
     icon: '🏋️',
-    description: 'Track daily exercise minutes',
+    description: 'Track fitness activity',
     goal_type: 'accumulation',
     unit: 'minutes',
+    units: ['minutes', 'km', 'miles', 'reps'],
     frequency_type: 'daily',
     requiresStartValue: false,
   },
   {
-    id: 'quran',
-    label: 'Quran',
-    icon: '🕌',
-    description: 'Track Quran recitation sessions',
+    id: 'arabic-learning',
+    label: 'Arabic Learning',
+    icon: '📖',
+    description: 'Log Arabic study progress',
     goal_type: 'accumulation',
     unit: 'lectures',
-    frequency_type: 'total',
+    units: ['lectures', 'pages', 'minutes'],
+    frequency_type: 'weekly',
     requiresStartValue: false,
   },
 ];

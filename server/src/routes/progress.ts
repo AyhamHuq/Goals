@@ -27,7 +27,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       return;
     }
     const result = await pool.query(
-      `SELECT * FROM progress_entries WHERE goal_id = $1 ORDER BY logged_for DESC, created_at DESC`,
+      `SELECT id, goal_id, value,
+              TO_CHAR(logged_for, 'YYYY-MM-DD') AS logged_for,
+              note, created_at, updated_at
+       FROM progress_entries WHERE goal_id = $1 ORDER BY logged_for DESC, created_at DESC`,
       [goal_id],
     );
     res.json(result.rows);

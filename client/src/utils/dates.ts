@@ -21,8 +21,10 @@ export function periodProportionalThreshold(periodKey: string): number {
 }
 
 export function formatLoggedFor(date: string): string {
-  // date is YYYY-MM-DD — parse without timezone shift
-  const [year, month, day] = date.split('-').map(Number);
+  // node-postgres returns DATE as a JS Date, which JSON-serialises to an ISO
+  // string like "2026-04-04T00:00:00.000Z". Strip the time part if present.
+  const datePart = date.split('T')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
   const d = new Date(year, month - 1, day);
   if (isToday(d)) return 'Today';
   if (isYesterday(d)) return 'Yesterday';

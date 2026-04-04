@@ -50,9 +50,14 @@ function getProgressColor(goal: GoalWithProgress): PacingColor {
   return 'error';
 }
 
-function goalDerivedLabel(goal: GoalWithProgress): string {
+function goalBaseLabel(goal: GoalWithProgress): string {
   if (goal.goal_type === 'measurement') return `Target: ${goal.target_value} ${goal.unit}`;
   return getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+}
+
+function goalDerivedLabel(goal: GoalWithProgress, includeCategory = false): string {
+  const base = goalBaseLabel(goal);
+  return includeCategory && goal.category ? `${goal.category.name}: ${base}` : base;
 }
 
 // ── Category view data model ──────────────────────────────────────────────────
@@ -274,7 +279,7 @@ function OverviewTab({
                             <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.4}>
                               <Box minWidth={0} flex={1} mr={1}>
                                 <Typography variant="body2" fontWeight={600} noWrap>
-                                  {goalDerivedLabel(goal)}
+                                  {goalDerivedLabel(goal, true)}
                                 </Typography>
                                 {goal.title && (
                                   <Typography variant="caption" color="text.secondary" noWrap display="block">

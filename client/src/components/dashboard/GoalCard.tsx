@@ -46,9 +46,10 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
   const barValue = Math.min(goal.percentage, 100);
   const showPacing = goal.frequency_type !== 'total' && goal.on_track !== null;
 
-  const derivedLabel = goal.goal_type === 'measurement'
+  const baseLabel = goal.goal_type === 'measurement'
     ? `Target: ${goal.target_value} ${goal.unit}`
     : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+  const derivedLabel = goal.category ? `${goal.category.name}: ${baseLabel}` : baseLabel;
 
   return (
     <>
@@ -64,29 +65,14 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
         onClick={() => setDrawerOpen(true)}
       >
         <CardContent sx={{ pb: '12px !important' }}>
-          {/* Header: derived label + category chip */}
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={goal.title ? 0.25 : 1.25}>
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={{ flex: 1, mr: 1, lineHeight: 1.3 }}
-            >
-              {derivedLabel}
-            </Typography>
-            {goal.category && (
-              <Chip
-                label={goal.category.name}
-                size="small"
-                sx={{
-                  flexShrink: 0,
-                  bgcolor: alpha(hex, 0.10),
-                  color: hex,
-                  border: 'none',
-                  fontWeight: 600,
-                }}
-              />
-            )}
-          </Box>
+          {/* Header: category-prefixed derived label */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={700}
+            sx={{ lineHeight: 1.3, mb: goal.title ? 0.25 : 1.25 }}
+          >
+            {derivedLabel}
+          </Typography>
 
           {/* Note (user-set title) */}
           {goal.title && (

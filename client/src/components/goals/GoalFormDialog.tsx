@@ -14,11 +14,17 @@ import {
   FormHelperText,
   useMediaQuery,
   useTheme,
+  IconButton,
+  CircularProgress,
+  Box,
+  Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { Goal, FrequencyType } from '../../types';
 import { useCreateGoal, useUpdateGoal } from '../../hooks/useGoals';
 import { useCategories } from '../../hooks/useCategories';
 import { useUserContext } from '../../context/UserContext';
+import { useToast } from '../Toast';
 
 interface GoalFormDialogProps {
   open: boolean;
@@ -44,6 +50,12 @@ const defaultForm: FormState = {
   frequency_type: 'total',
 };
 
+const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
+  { value: 'total',  label: 'Total for the month', description: 'Track a total amount for the month' },
+  { value: 'daily',  label: 'Daily target',         description: 'Tracks pacing: target × days elapsed' },
+  { value: 'weekly', label: 'Weekly target',        description: 'Tracks pacing: target × weeks elapsed' },
+];
+
 export default function GoalFormDialog({
   open,
   onClose,
@@ -54,6 +66,7 @@ export default function GoalFormDialog({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const { selectedUser } = useUserContext();
+  const { showToast } = useToast();
   const groupId = selectedUser?.group_id;
 
   const { data: categories = [] } = useCategories(groupId);
@@ -102,21 +115,34 @@ export default function GoalFormDialog({
       unit: form.unit.trim(),
       frequency_type: form.frequency_type,
     };
-    if (goal) {
-      await updateGoal.mutateAsync({ id: goal.id, data: payload });
-    } else {
-      await createGoal.mutateAsync(payload);
+    try {
+      if (goal) {
+        await updateGoal.mutateAsync({ id: goal.id, data: payload });
+        showToast({ message: 'Goal updated!', severity: 'success' });
+      } else {
+        await createGoal.mutateAsync(payload);
+        showToast({ message: 'Goal created!', severity: 'success' });
+      }
+      onClose();
+    } catch {
+      showToast({ message: 'Failed to save goal. Please try again.', severity: 'error' });
     }
-    onClose();
   };
 
   const isPending = createGoal.isPending || updateGoal.isPending;
+  const freqDescription = frequencyOptions.find((o) => o.value === form.frequency_type)?.description ?? '';
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen={fullScreen} maxWidth="sm" fullWidth>
-      <DialogTitle>{goal ? 'Edit Goal' : 'New Goal'}</DialogTitle>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+        <Typography variant="h6">{goal ? 'Edit Goal' : 'New Goal'}</Typography>
+        <IconButton size="small" onClick={onClose} disabled={isPending}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           <TextField
             label="Title"
             value={form.title}
@@ -125,9 +151,10 @@ export default function GoalFormDialog({
             helperText={errors.title}
             autoFocus
             fullWidth
+            placeholder="e.g. Read 10 books"
           />
 
-          <FormControl fullWidth>
+          <FormControl fullWidth size="small">
             <InputLabel id="category-label">Category (optional)</InputLabel>
             <Select
               labelId="category-label"
@@ -163,12 +190,12 @@ export default function GoalFormDialog({
               onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
               error={!!errors.unit}
               helperText={errors.unit}
-              placeholder="e.g. books, km, mins"
+              placeholder="books, km, mins…"
               sx={{ flex: 1 }}
             />
           </Stack>
 
-          <FormControl fullWidth>
+          <FormControl fullWidth size="small">
             <InputLabel id="freq-label">Frequency</InputLabel>
             <Select
               labelId="freq-label"
@@ -178,25 +205,28 @@ export default function GoalFormDialog({
                 setForm((f) => ({ ...f, frequency_type: e.target.value as FrequencyType }))
               }
             >
-              <MenuItem value="total">Total for the month</MenuItem>
-              <MenuItem value="daily">Per day</MenuItem>
-              <MenuItem value="weekly">Per week</MenuItem>
+              {frequencyOptions.map((o) => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
             </Select>
-            <FormHelperText>
-              {form.frequency_type === 'total' && 'Track a total amount for the month'}
-              {form.frequency_type === 'daily' && 'Tracks pacing: target × days elapsed'}
-              {form.frequency_type === 'weekly' && 'Tracks pacing: target × weeks elapsed'}
-            </FormHelperText>
+            <FormHelperText>{freqDescription}</FormHelperText>
           </FormControl>
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={isPending}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={isPending}>
-          {goal ? 'Save Changes' : 'Create Goal'}
-        </Button>
+
+      <DialogActions sx={{ px: 3, pb: 2.5 }}>
+        <Box width="100%">
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            fullWidth
+            size="large"
+            disabled={isPending}
+            startIcon={isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {goal ? 'Save Changes' : 'Create Goal'}
+          </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   );

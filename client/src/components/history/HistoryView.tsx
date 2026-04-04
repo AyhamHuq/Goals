@@ -2,22 +2,86 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  List,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
   Skeleton,
-  Divider,
+  Grid,
+  Card,
+  CardActionArea,
+  CardContent,
+  LinearProgress,
   Chip,
 } from '@mui/material';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import IconButton from '@mui/material/IconButton';
 import { format } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
-import { useHistoryPeriods } from '../../hooks/useHistory';
+import { useHistoryPeriods, useHistoryDetail } from '../../hooks/useHistory';
 import { periodKeyToLabel } from '../../utils/dates';
 import ArchivedMonthDetail from './ArchivedMonthDetail';
+
+function MonthCardSkeleton() {
+  return (
+    <Card sx={{ borderRadius: 2 }}>
+      <CardContent>
+        <Skeleton variant="text" width="55%" height={24} sx={{ mb: 0.75 }} />
+        <Skeleton variant="text" width="35%" height={18} sx={{ mb: 1.5 }} />
+        <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 4 }} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function MonthCard({
+  periodKey,
+  userId,
+  onClick,
+}: {
+  periodKey: string;
+  userId: string;
+  onClick: () => void;
+}) {
+  const { data } = useHistoryDetail(userId, periodKey);
+  const goals = data?.goals ?? [];
+  const avgPct =
+    goals.length > 0
+      ? Math.round(goals.reduce((sum, g) => sum + g.percentage, 0) / goals.length)
+      : 0;
+  const barColor: 'success' | 'warning' | 'error' =
+    avgPct >= 80 ? 'success' : avgPct >= 50 ? 'warning' : 'error';
+
+  return (
+    <Card sx={{ borderRadius: 2 }}>
+      <CardActionArea onClick={onClick} sx={{ borderRadius: 2 }}>
+        <CardContent>
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            {periodKeyToLabel(periodKey)}
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1} mb={1.25}>
+            <Chip
+              label={`${goals.length} goal${goals.length !== 1 ? 's' : ''}`}
+              size="small"
+              variant="outlined"
+            />
+            {goals.length > 0 && (
+              <Chip
+                label={`${avgPct}% avg`}
+                size="small"
+                color={barColor}
+              />
+            )}
+          </Box>
+          {goals.length > 0 && (
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(avgPct, 100)}
+              color={barColor}
+              sx={{ height: 6, borderRadius: 4 }}
+            />
+          )}
+        </CardContent>
+      </CardActionArea>
+    </Card>
+  );
+}
 
 export default function HistoryView() {
   const { selectedUser } = useUserContext();
@@ -26,13 +90,12 @@ export default function HistoryView() {
   const { data: periods = [], isLoading } = useHistoryPeriods(selectedUser?.id);
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
 
-  // Exclude current month from history list
   const pastPeriods = periods.filter((p) => p !== currentMonth);
 
   if (selectedPeriod && selectedUser) {
     return (
       <Box>
-        <Box display="flex" alignItems="center" gap={1} mb={1}>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
           <IconButton onClick={() => setSelectedPeriod(null)} size="small">
             <ArrowBackIcon />
           </IconButton>
@@ -51,16 +114,18 @@ export default function HistoryView() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} mb={2}>
+      <Typography variant="h5" fontWeight={700} mb={2.5}>
         History
       </Typography>
 
       {isLoading && (
-        <Box>
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} variant="rectangular" height={56} sx={{ mb: 1, borderRadius: 1 }} />
+        <Grid container spacing={2}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={12} sm={6} key={i}>
+              <MonthCardSkeleton />
+            </Grid>
           ))}
-        </Box>
+        </Grid>
       )}
 
       {!isLoading && pastPeriods.length === 0 && (
@@ -69,26 +134,18 @@ export default function HistoryView() {
         </Typography>
       )}
 
-      {!isLoading && pastPeriods.length > 0 && (
-        <List disablePadding>
-          {pastPeriods.map((pk, idx) => (
-            <React.Fragment key={pk}>
-              <ListItemButton
+      {!isLoading && pastPeriods.length > 0 && selectedUser && (
+        <Grid container spacing={2}>
+          {pastPeriods.map((pk) => (
+            <Grid item xs={12} sm={6} key={pk}>
+              <MonthCard
+                periodKey={pk}
+                userId={selectedUser.id}
                 onClick={() => setSelectedPeriod(pk)}
-                sx={{ borderRadius: 1 }}
-              >
-                <ListItemText
-                  primary={periodKeyToLabel(pk)}
-                  secondary={pk}
-                />
-                <ListItemIcon sx={{ minWidth: 0 }}>
-                  <ChevronRightIcon />
-                </ListItemIcon>
-              </ListItemButton>
-              {idx < pastPeriods.length - 1 && <Divider />}
-            </React.Fragment>
+              />
+            </Grid>
           ))}
-        </List>
+        </Grid>
       )}
     </Box>
   );

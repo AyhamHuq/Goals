@@ -5,19 +5,73 @@ import {
   Card,
   CardContent,
   Typography,
-  Select,
-  MenuItem,
   Button,
   Avatar,
-  FormControl,
-  InputLabel,
-  CircularProgress,
+  Skeleton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import { useUserContext } from '../context/UserContext';
 import { touchUser } from '../api/users';
+import { User } from '../types';
+
+function AvatarCard({
+  user,
+  selected,
+  onSelect,
+}: {
+  user: User;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Box
+      onClick={onSelect}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 0.75,
+        cursor: 'pointer',
+        p: 1,
+        borderRadius: 2,
+        transition: 'background 0.15s',
+        '&:hover': { bgcolor: 'rgba(92,107,192,0.06)' },
+      }}
+    >
+      <Avatar
+        sx={{
+          width: 64,
+          height: 64,
+          bgcolor: user.avatar_color,
+          fontSize: 24,
+          fontWeight: 700,
+          border: selected ? `3px solid ${user.avatar_color}` : '3px solid transparent',
+          boxShadow: selected
+            ? `0 0 0 3px ${user.avatar_color}33`
+            : '0 2px 8px rgba(0,0,0,0.10)',
+          transition: 'box-shadow 0.15s, border 0.15s',
+        }}
+      >
+        {user.display_name[0].toUpperCase()}
+      </Avatar>
+      <Typography
+        variant="caption"
+        fontWeight={selected ? 700 : 500}
+        color={selected ? 'primary.main' : 'text.secondary'}
+        sx={{ fontSize: '0.8rem' }}
+      >
+        {user.display_name}
+      </Typography>
+    </Box>
+  );
+}
 
 export default function UserSelectScreen() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { users, usersLoading, selectedUser, setSelectedUser } = useUserContext();
   const [chosenId, setChosenId] = useState<string>('');
 
@@ -39,76 +93,100 @@ export default function UserSelectScreen() {
     navigate('/dashboard');
   };
 
-  if (usersLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box
       display="flex"
       justifyContent="center"
       alignItems="center"
       minHeight="100vh"
-      sx={{ bgcolor: 'background.default', p: 2 }}
+      sx={{
+        background: 'linear-gradient(160deg, #EEF0FF 0%, #F5F6FA 100%)',
+        p: 2,
+      }}
     >
-      <Card sx={{ width: '100%', maxWidth: 400 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" fontWeight={700}>
-            Family Goals
-          </Typography>
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+      <Card
+        sx={{
+          width: '100%',
+          maxWidth: 420,
+          boxShadow: '0 8px 32px rgba(92,107,192,0.12)',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: isMobile ? 3 : 4 }}>
+          {/* Logo area */}
+          <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
+            <Box
+              sx={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #5C6BC0 0%, #7986CB 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+                boxShadow: '0 4px 16px rgba(92,107,192,0.35)',
+              }}
+            >
+              <TrackChangesIcon sx={{ fontSize: 36, color: '#fff' }} />
+            </Box>
+            <Typography variant="h4" component="h1" align="center" gutterBottom>
+              Family Goals
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Track what matters, together.
+            </Typography>
+          </Box>
+
+          {/* Who's checking in label */}
+          <Typography
+            variant="subtitle1"
+            align="center"
+            color="text.secondary"
+            sx={{ mb: 2, fontSize: '0.9rem', fontWeight: 500 }}
+          >
             Who's checking in?
           </Typography>
 
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel id="user-select-label">Select your name</InputLabel>
-            <Select
-              labelId="user-select-label"
-              value={chosenId}
-              label="Select your name"
-              onChange={(e) => setChosenId(e.target.value)}
-              renderValue={(val) => {
-                const user = users.find((u) => u.id === val);
-                if (!user) return '';
-                return (
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Avatar
-                      sx={{ width: 28, height: 28, bgcolor: user.avatar_color, fontSize: 13 }}
-                    >
-                      {user.display_name[0].toUpperCase()}
-                    </Avatar>
-                    {user.display_name}
-                  </Box>
-                );
-              }}
+          {/* Avatar grid */}
+          {usersLoading ? (
+            <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap" mb={3}>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Box key={i} display="flex" flexDirection="column" alignItems="center" gap={0.75}>
+                  <Skeleton variant="circular" width={64} height={64} />
+                  <Skeleton variant="text" width={48} height={16} />
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              display="flex"
+              justifyContent="center"
+              flexWrap="wrap"
+              gap={1}
+              mb={3}
             >
               {users.map((user) => (
-                <MenuItem key={user.id} value={user.id}>
-                  <Box display="flex" alignItems="center" gap={1.5}>
-                    <Avatar
-                      sx={{ width: 32, height: 32, bgcolor: user.avatar_color, fontSize: 14 }}
-                    >
-                      {user.display_name[0].toUpperCase()}
-                    </Avatar>
-                    {user.display_name}
-                  </Box>
-                </MenuItem>
+                <AvatarCard
+                  key={user.id}
+                  user={user}
+                  selected={chosenId === user.id}
+                  onSelect={() => setChosenId(user.id)}
+                />
               ))}
-            </Select>
-          </FormControl>
+            </Box>
+          )}
 
+          {/* CTA button */}
           <Button
             variant="contained"
             fullWidth
             size="large"
             disabled={!chosenId}
             onClick={handleGo}
+            sx={{ py: 1.5, fontSize: '1rem' }}
           >
-            Let's Go
+            Let's go →
           </Button>
         </CardContent>
       </Card>

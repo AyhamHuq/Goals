@@ -18,7 +18,6 @@ import {
   CircularProgress,
   Box,
   Typography,
-  Chip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Goal, FrequencyType, GoalType } from '../../types';
@@ -81,7 +80,6 @@ export default function GoalFormDialog({
 
   const [form, setForm] = useState<FormState>(defaultForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -97,22 +95,25 @@ export default function GoalFormDialog({
         });
       } else {
         setForm(defaultForm);
-        setSelectedTemplate(null);
       }
       setErrors({});
     }
   }, [open, goal]);
 
-  const applyTemplate = (templateId: string) => {
-    const t = GOAL_TEMPLATES.find((t) => t.id === templateId);
-    if (!t) return;
-    setSelectedTemplate(templateId);
+  const handleCategoryChange = (catId: string) => {
+    const cat = categories.find((c) => c.id === catId);
+    const template = cat
+      ? GOAL_TEMPLATES.find((t) => t.label.toLowerCase() === cat.name.toLowerCase())
+      : undefined;
     setForm((f) => ({
       ...f,
-      goal_type: t.goal_type,
-      unit: t.unit,
-      frequency_type: t.frequency_type,
-      start_value: '',
+      category_id: catId,
+      ...(template && {
+        goal_type: template.goal_type,
+        unit: template.unit,
+        frequency_type: template.frequency_type,
+        start_value: '',
+      }),
     }));
   };
 
@@ -173,28 +174,6 @@ export default function GoalFormDialog({
 
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-          {/* Template picker — new goals only */}
-          {!goal && (
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                Quick start
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {GOAL_TEMPLATES.map((t) => (
-                  <Chip
-                    key={t.id}
-                    label={`${t.icon} ${t.label}`}
-                    onClick={() => applyTemplate(t.id)}
-                    variant={selectedTemplate === t.id ? 'filled' : 'outlined'}
-                    color={selectedTemplate === t.id ? 'primary' : 'default'}
-                    size="small"
-                    sx={{ mb: 0.5 }}
-                  />
-                ))}
-              </Stack>
-            </Box>
-          )}
-
           <TextField
             label="Title"
             value={form.title}
@@ -212,7 +191,7 @@ export default function GoalFormDialog({
               labelId="category-label"
               value={form.category_id}
               label="Category (optional)"
-              onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+              onChange={(e) => handleCategoryChange(e.target.value)}
             >
               <MenuItem value="">
                 <em>None</em>

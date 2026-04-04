@@ -2,17 +2,17 @@
 
 ## Context
 
-Building a lightweight web app for a family of 5-7 people to set monthly goals, track daily progress, and view each other's progress for accountability. Greenfield project — empty directory, deploying to Hetzner CX23 via Docker Compose.
+Building a lightweight web app for a family of 5-7 people to set monthly goals, track daily progress, and view each other's progress for accountability. Deploying to Hetzner CX23 via Docker Compose.
 
 ## Stack
 
-- **Frontend:** React (Vite) + TypeScript + Material UI
+- **Frontend:** React (Vite) + TypeScript + Material UI (Inter font, indigo/pink palette)
 - **Backend:** Node.js + Express + TypeScript
 - **Database:** PostgreSQL 16
 - **Data fetching:** @tanstack/react-query
 - **Validation:** zod (server-side)
 - **Deployment:** Docker Compose (nginx + node + postgres)
-- **Notifications:** Twilio SMS (stub in MVP, implement in V2)
+- **Notifications:** Twilio SMS (stubbed in MVP via `smsService.ts`, implement in V2)
 
 ## Database Schema
 
@@ -39,12 +39,13 @@ daily:    total_target = target * days_in_month; expected = target * days_elapse
 weekly:   total_target = target * ceil(days_in_month/7); expected = target * weeks_elapsed
 ```
 
-Both `percentage` and `on_track` (current >= expected) computed in dashboard service.
+Both `percentage` and `on_track` (current >= expected) computed in `dashboardService.ts`.
 
 ## API Endpoints
 
 | Area | Endpoints |
 |------|-----------|
+| Health | `GET /health` |
 | Users | `GET /api/users`, `PATCH /api/users/:id/touch` |
 | Categories | `GET /api/categories`, `POST /api/categories` |
 | Goals | `GET/POST /api/goals`, `PUT/DELETE /api/goals/:id`, `POST /api/goals/copy-from-previous` |
@@ -55,18 +56,18 @@ Both `percentage` and `on_track` (current >= expected) computed in dashboard ser
 ## Frontend Components
 
 ```
-App
-├── UserSelectScreen (dropdown, localStorage persistence)
+App (ErrorBoundary, ToastProvider)
+├── UserSelectScreen (avatar grid, localStorage persistence)
 ├── Layout
-│   ├── TopAppBar (user avatar, period selector, view toggle)
+│   ├── TopAppBar (user avatar/switcher, period selector, Personal/Group tabs)
 │   ├── BottomNavigation (mobile: Dashboard / Add Goal / History)
 │   └── MainContent
-│       ├── PersonalDashboard (GoalCards with progress bars, QuickLogButton)
-│       ├── GroupDashboard (UserGoalSummary per user, CategoryComparison)
-│       ├── GoalFormDialog (create/edit)
-│       ├── ProgressLogDialog (log with date picker)
-│       ├── ProgressHistoryDrawer (view/edit/delete entries)
-│       └── HistoryView (past months, archived goals)
+│       ├── PersonalDashboard (greeting, stats bar, GoalCards, loading/empty states)
+│       ├── GroupDashboard (per-user accordion cards with avg progress)
+│       ├── GoalFormDialog (create/edit, fullScreen on mobile)
+│       ├── ProgressLogDialog (log with date picker, toast on success)
+│       ├── ProgressHistoryDrawer (bottom drawer, inline edit, delete with confirm)
+│       └── HistoryView (month grid cards → ArchivedMonthDetail read-only)
 ```
 
 Mobile-first: BottomNav on mobile, full-width cards, fullScreen dialogs on small screens.
@@ -75,96 +76,77 @@ Mobile-first: BottomNav on mobile, full-width cards, fullScreen dialogs on small
 
 ```
 Goals/
-├── docker-compose.yml
-├── .env.example
-├── client/          (Vite + React + MUI)
+├── docker-compose.yml          # 3 services with healthchecks, env-var config, restart policies
+├── .env.example                # All required + optional vars (DB_PASSWORD, APP_PORT, Twilio)
+├── dev.sh                      # Local development setup script
+├── client/                     (Vite + React + MUI)
 │   ├── src/
-│   │   ├── api/     (axios client functions)
-│   │   ├── hooks/   (react-query hooks)
-│   │   ├── context/ (UserContext, PeriodContext)
-│   │   ├── components/ (dashboard/, goals/, progress/, history/)
-│   │   ├── utils/   (frequency math, date helpers)
-│   │   └── types/
-│   ├── Dockerfile
-│   └── nginx.conf
-├── server/          (Express + pg)
+│   │   ├── api/                (axios client functions per resource)
+│   │   ├── hooks/              (react-query hooks for all data + mutations)
+│   │   ├── context/            (UserContext, PeriodContext)
+│   │   ├── components/
+│   │   │   ├── dashboard/      (PersonalDashboard, GroupDashboard, GoalCard)
+│   │   │   ├── goals/          (GoalFormDialog)
+│   │   │   ├── progress/       (ProgressLogDialog, ProgressHistoryDrawer, QuickLogButton)
+│   │   │   └── history/        (HistoryView, ArchivedMonthDetail)
+│   │   ├── utils/              (frequency labels, date helpers)
+│   │   ├── types/              (shared TypeScript interfaces)
+│   │   ├── theme.ts            (MUI theme — indigo/pink, Inter font, 12px radius)
+│   │   ├── ErrorBoundary.tsx
+│   │   └── Toast.tsx           (global snackbar system)
+│   ├── Dockerfile              (multi-stage: Node build → nginx serve)
+│   └── nginx.conf              (static files + /api/* proxy to server)
+├── server/                     (Express + pg)
 │   ├── src/
-│   │   ├── db/      (pool, migrations)
-│   │   ├── routes/
-│   │   ├── services/ (goalService, dashboardService, frequencyCalc)
-│   │   └── middleware/ (errorHandler, validate)
-│   ├── seed.ts
-│   └── Dockerfile
+│   │   ├── db/
+│   │   │   ├── pool.ts         (pg.Pool from DATABASE_URL)
+│   │   │   ├── migrate.ts      (runs on startup; idempotent via schema_migrations table)
+│   │   │   └── migrations/     (001_initial.sql — full schema)
+│   │   ├── routes/             (users, categories, goals, progress, dashboard, history)
+│   │   ├── services/
+│   │   │   ├── dashboardService.ts   (aggregation + frequency math)
+│   │   │   ├── frequencyCalc.ts      (pure function; 56 tests)
+│   │   │   └── smsService.ts         (Twilio stub; real sending gated by TWILIO_ENABLED)
+│   │   └── middleware/         (errorHandler, validate)
+│   ├── seed.ts                 (1 group, 6 users, 8 categories)
+│   └── Dockerfile              (multi-stage; copies migrations SQL into dist/)
 └── db/
-    └── init.sql
+    └── init.sql                (placeholder — schema managed by migrate.ts)
 ```
 
-## Monthly Lifecycle
+## Implementation Status
 
-- Goals belong to a `period_key`. Current period = server clock `YYYY-MM`.
-- No automatic archival. Past periods are read-only in the UI.
-- New month: empty state prompts "Create goals" or "Copy from last month."
-- Mid-month joins: user creates goals with current period_key, pacing calculated from month start.
-
-## Implementation Order
-
-### Phase 1: Scaffolding + Database
-- Init git repo, `.gitignore`
-- Scaffold server (Express + TypeScript + pg + zod)
-- Scaffold client (Vite + React + TypeScript + MUI)
-- `docker-compose.yml` with postgres service
-- Migration `001_initial.sql` with full schema
-- Seed script (1 group, 5-7 users, default categories)
-
-### Phase 2: Backend API
-- Express setup (app, config, error handler, db pool)
-- Users routes → Categories routes → Goals CRUD → Progress CRUD
-- Dashboard service (frequency math, aggregation)
-- History endpoints
-
-### Phase 3: Frontend - Shell + User Selection
-- MUI theme (mobile-first), contexts, router
-- UserSelectScreen, Layout, TopAppBar, BottomNav
-
-### Phase 4: Frontend - Personal Dashboard
-- API client + react-query hooks
-- PersonalDashboard, GoalCard, QuickLogButton
-- ProgressLogDialog, GoalFormDialog, ProgressHistoryDrawer
-
-### Phase 5: Frontend - Group Dashboard
-- GroupDashboard, UserGoalSummary, CategoryComparison
-
-### Phase 6: History + Monthly Flow
-- HistoryView, ArchivedMonthDetail, PeriodSelector
-- "Copy from last month" flow
-
-### Phase 7: Docker + Deployment
-- Dockerfiles (multi-stage for client), nginx.conf
-- Full docker-compose with all 3 services
-- Deploy to Hetzner
-
-### Phase 8: Polish
-- Loading/empty/error states
-- Responsive tweaks on real devices
-- Twilio SMS stub (env vars, send function, no actual calls)
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Scaffolding + Database | ✅ Done |
+| 2 | Backend API (all routes + 56 tests) | ✅ Done |
+| 3 | Frontend Shell + User Selection | ✅ Done |
+| 4 | Personal Dashboard | ✅ Done |
+| 5 | Group Dashboard | ✅ Done |
+| 6 | History + Monthly Flow | ✅ Done |
+| 7 | Docker + Deployment config | ✅ Done |
+| 8 | Polish (loading/empty/error states, UI) | 🔄 In progress |
 
 ## Verification
 
-1. `docker compose up --build` — all 3 services start healthy
-2. Select a user from dropdown → lands on personal dashboard
-3. Create a goal (each frequency type) → appears in dashboard
-4. Log progress → progress bar updates, % recalculates, on-track indicator works
-5. Switch to group view → see all users' goals with progress
-6. Navigate to a past month → read-only, shows final stats
-7. New month → empty state, "copy from last month" works
-8. Test on mobile viewport → bottom nav, full-width cards, fullScreen dialogs
+1. `./dev.sh` — starts DB, runs migrations + seed, launches dev servers
+2. `docker compose up --build` — all 3 services start healthy (check `/health`)
+3. Select a user → lands on personal dashboard with greeting
+4. Create a goal (each frequency type) → appears with correct pacing
+5. Log progress → bar updates, % recalculates, toast confirms
+6. Switch to group view → all users' summaries visible
+7. Navigate to past month → read-only, shows final stats
+8. New month → empty state, "copy from last month" works
+9. Mobile viewport → bottom nav, full-width cards, fullScreen dialogs
 
 ## Critical Files
 
 - `server/src/db/migrations/001_initial.sql` — schema, everything depends on this
-- `server/src/services/dashboardService.ts` — core business logic (aggregation + frequency math)
+- `server/src/db/migrate.ts` — runs on every server start; idempotent
+- `server/src/services/dashboardService.ts` — core business logic
+- `server/src/services/frequencyCalc.ts` — frequency math (56 unit tests)
 - `client/src/components/dashboard/PersonalDashboard.tsx` — primary user view
-- `client/src/components/UserSelectScreen.tsx` — app entry point
+- `client/src/theme.ts` — visual identity for the whole app
 - `docker-compose.yml` — deployment orchestration
 
 ---
@@ -172,10 +154,11 @@ Goals/
 ## Future Enhancements (V2+)
 
 - Authentication (OAuth/email+password)
-- Twilio SMS notifications (foundation stubbed in MVP)
+- Twilio SMS notifications (stub already in `smsService.ts`)
 - Admin role (unlock/edit goals, manage users)
 - Social features (comments, likes, encouragement feed)
 - Streak tracking, pacing suggestions
 - Category leaderboards, shared group goals
 - Calendar view, charts, GitHub-style heatmaps
 - PWA support for offline + push notifications
+- Code-split MUI bundle (currently ~581 kB, addressable with lazy imports)

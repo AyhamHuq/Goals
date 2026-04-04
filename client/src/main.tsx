@@ -8,6 +8,8 @@ import App from './App';
 import theme from './theme';
 import { UserProvider } from './context/UserContext';
 import { PeriodProvider } from './context/PeriodContext';
+import { ToastProvider } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +28,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <BrowserRouter>
           <UserProvider>
             <PeriodProvider>
-              <App />
+              <ToastProvider>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+              </ToastProvider>
             </PeriodProvider>
           </UserProvider>
         </BrowserRouter>

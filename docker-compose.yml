@@ -16,6 +16,7 @@ services:
       POSTGRES_DB: goals
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init-sandbox.sql:/docker-entrypoint-initdb.d/init-sandbox.sql:ro
     networks:
       - goals-net
     healthcheck:
@@ -35,6 +36,7 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      SEED_USERS: ${SEED_USERS:-Alice,Bob,Charlie,Diana,Eve,Frank}
     depends_on:
       db:
         condition: service_healthy

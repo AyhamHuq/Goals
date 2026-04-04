@@ -10,6 +10,7 @@ import { UserProvider } from './context/UserContext';
 import { PeriodProvider } from './context/PeriodContext';
 import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SandboxBanner } from './components/SandboxBanner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           <UserProvider>
             <PeriodProvider>
               <ToastProvider>
+                <SandboxBanner />
                 <ErrorBoundary>
                   <App />
                 </ErrorBoundary>

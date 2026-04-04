@@ -162,6 +162,16 @@ start_dev_servers() {
   wait $SERVER_PID $CLIENT_PID
 }
 
+# ── Sandbox DB ────────────────────────────────────────────────────────────────
+
+ensure_sandbox_db() {
+  log "Ensuring sandbox database exists..."
+  docker compose "${COMPOSE_FILES[@]}" exec -T db \
+    psql -U goals -d postgres -c "CREATE DATABASE goals_sandbox OWNER goals;" 2>/dev/null \
+    || true  # already exists — that's fine
+  ok "Sandbox DB ready"
+}
+
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 cmd="${1:-start}"
@@ -186,6 +196,24 @@ case "$cmd" in
     reset_db
     start_dev_servers
     ;;
+  sandbox)
+    check_deps
+    setup_env
+    export SANDBOX=true
+    export DATABASE_URL="postgres://goals:${DB_PASSWORD:-goals}@localhost:5432/goals_sandbox"
+    COMPOSE_FILES=(-f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.dev.yml" -f "$ROOT/docker-compose.sandbox.yml")
+    install_deps
+    start_db
+    ensure_sandbox_db
+    run_migrate
+    check_seeded
+    ok ""
+    ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    warn "  SANDBOX MODE — data saves to goals_sandbox"
+    warn "  Real database is untouched"
+    ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    start_dev_servers
+    ;;
   logs)
     docker compose "${COMPOSE_FILES[@]}" logs -f
     ;;
@@ -198,9 +226,10 @@ case "$cmd" in
     run_migrate
     ;;
   *)
-    echo "Usage: $0 [start|stop|reset|logs|seed|migrate]"
+    echo "Usage: $0 [start|sandbox|stop|reset|logs|seed|migrate]"
     echo ""
     echo "  start    Start DB + run migrations + launch dev servers (default)"
+    echo "  sandbox  Start in sandbox mode (uses goals_sandbox DB, real DB untouched)"
     echo "  stop     Stop the database container"
     echo "  reset    Wipe DB, re-migrate, re-seed, restart dev servers"
     echo "  logs     Tail docker compose logs"

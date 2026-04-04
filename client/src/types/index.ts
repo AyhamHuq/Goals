@@ -1,4 +1,5 @@
 export type FrequencyType = 'total' | 'daily' | 'weekly';
+export type GoalType = 'accumulation' | 'measurement';
 
 export interface User {
   id: string;
@@ -29,6 +30,8 @@ export interface Goal {
   target_value: number;
   unit: string;
   frequency_type: FrequencyType;
+  goal_type: GoalType;
+  start_value: number | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -51,6 +54,8 @@ export interface GoalWithProgress {
   target_value: number;
   unit: string;
   frequency_type: FrequencyType;
+  goal_type: GoalType;
+  start_value: number | null;
   current_value: number;
   expected_value: number | null;
   percentage: number;
@@ -67,14 +72,10 @@ export interface PersonalDashboardResponse {
 }
 
 export interface UserGoalSummary {
-  user: User;
+  user: Pick<User, 'id' | 'display_name' | 'avatar_color'>;
   goals: GoalWithProgress[];
 }
 
 export interface GroupDashboardResponse {
-  period_key: string;
-  days_in_month: number;
-  days_elapsed: number;
-  weeks_elapsed: number;
   users: UserGoalSummary[];
 }

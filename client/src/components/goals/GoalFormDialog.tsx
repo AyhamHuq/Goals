@@ -18,13 +18,15 @@ import {
   CircularProgress,
   Box,
   Typography,
+  Chip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { Goal, FrequencyType } from '../../types';
+import { Goal, FrequencyType, GoalType } from '../../types';
 import { useCreateGoal, useUpdateGoal } from '../../hooks/useGoals';
 import { useCategories } from '../../hooks/useCategories';
 import { useUserContext } from '../../context/UserContext';
 import { useToast } from '../Toast';
+import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
 
 interface GoalFormDialogProps {
   open: boolean;
@@ -40,6 +42,8 @@ interface FormState {
   target_value: string;
   unit: string;
   frequency_type: FrequencyType;
+  goal_type: GoalType;
+  start_value: string;
 }
 
 const defaultForm: FormState = {
@@ -48,6 +52,8 @@ const defaultForm: FormState = {
   target_value: '',
   unit: '',
   frequency_type: 'total',
+  goal_type: 'accumulation',
+  start_value: '',
 };
 
 const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
@@ -75,6 +81,7 @@ export default function GoalFormDialog({
 
   const [form, setForm] = useState<FormState>(defaultForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -85,13 +92,29 @@ export default function GoalFormDialog({
           target_value: String(goal.target_value),
           unit: goal.unit,
           frequency_type: goal.frequency_type,
+          goal_type: goal.goal_type,
+          start_value: goal.start_value != null ? String(goal.start_value) : '',
         });
       } else {
         setForm(defaultForm);
+        setSelectedTemplate(null);
       }
       setErrors({});
     }
   }, [open, goal]);
+
+  const applyTemplate = (templateId: string) => {
+    const t = GOAL_TEMPLATES.find((t) => t.id === templateId);
+    if (!t) return;
+    setSelectedTemplate(templateId);
+    setForm((f) => ({
+      ...f,
+      goal_type: t.goal_type,
+      unit: t.unit,
+      frequency_type: t.frequency_type,
+      start_value: '',
+    }));
+  };
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormState, string>> = {};
@@ -100,6 +123,11 @@ export default function GoalFormDialog({
       newErrors.target_value = 'Enter a positive number';
     }
     if (!form.unit.trim()) newErrors.unit = 'Unit is required';
+    if (form.goal_type === 'measurement') {
+      if (!form.start_value || isNaN(Number(form.start_value)) || Number(form.start_value) <= 0) {
+        newErrors.start_value = 'Enter your current measurement';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -114,6 +142,8 @@ export default function GoalFormDialog({
       target_value: Number(form.target_value),
       unit: form.unit.trim(),
       frequency_type: form.frequency_type,
+      goal_type: form.goal_type,
+      ...(form.goal_type === 'measurement' && { start_value: Number(form.start_value) }),
     };
     try {
       if (goal) {
@@ -143,6 +173,28 @@ export default function GoalFormDialog({
 
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+          {/* Template picker — new goals only */}
+          {!goal && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                Quick start
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {GOAL_TEMPLATES.map((t) => (
+                  <Chip
+                    key={t.id}
+                    label={`${t.icon} ${t.label}`}
+                    onClick={() => applyTemplate(t.id)}
+                    variant={selectedTemplate === t.id ? 'filled' : 'outlined'}
+                    color={selectedTemplate === t.id ? 'primary' : 'default'}
+                    size="small"
+                    sx={{ mb: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+
           <TextField
             label="Title"
             value={form.title}
@@ -195,22 +247,39 @@ export default function GoalFormDialog({
             />
           </Stack>
 
-          <FormControl fullWidth size="small">
-            <InputLabel id="freq-label">Frequency</InputLabel>
-            <Select
-              labelId="freq-label"
-              value={form.frequency_type}
-              label="Frequency"
-              onChange={(e) =>
-                setForm((f) => ({ ...f, frequency_type: e.target.value as FrequencyType }))
-              }
-            >
-              {frequencyOptions.map((o) => (
-                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-              ))}
-            </Select>
-            <FormHelperText>{freqDescription}</FormHelperText>
-          </FormControl>
+          {/* Start value — measurement goals only */}
+          {form.goal_type === 'measurement' && (
+            <TextField
+              label={`Starting ${form.unit || 'value'} (your current measurement)`}
+              type="number"
+              value={form.start_value}
+              onChange={(e) => setForm((f) => ({ ...f, start_value: e.target.value }))}
+              error={!!errors.start_value}
+              helperText={errors.start_value ?? `Where you're starting from, e.g. your weight today`}
+              inputProps={{ min: 0, step: 'any' }}
+              fullWidth
+            />
+          )}
+
+          {/* Frequency selector — accumulation goals only */}
+          {form.goal_type === 'accumulation' && (
+            <FormControl fullWidth size="small">
+              <InputLabel id="freq-label">Frequency</InputLabel>
+              <Select
+                labelId="freq-label"
+                value={form.frequency_type}
+                label="Frequency"
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, frequency_type: e.target.value as FrequencyType }))
+                }
+              >
+                {frequencyOptions.map((o) => (
+                  <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>{freqDescription}</FormHelperText>
+            </FormControl>
+          )}
         </Stack>
       </DialogContent>
 

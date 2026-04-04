@@ -5,21 +5,30 @@ import { validate } from '../middleware/validate';
 
 const router = Router();
 
-const createGoalSchema = z.object({
-  user_id: z.string().uuid(),
-  category_id: z.string().uuid().optional(),
-  period_key: z.string().regex(/^\d{4}-\d{2}$/),
-  title: z.string().min(1).max(255),
-  target_value: z.number().positive(),
-  unit: z.string().min(1).max(50),
-  frequency_type: z.enum(['total', 'daily', 'weekly']),
-});
+const createGoalSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    category_id: z.string().uuid().optional(),
+    period_key: z.string().regex(/^\d{4}-\d{2}$/),
+    title: z.string().min(1).max(255),
+    target_value: z.number().positive(),
+    unit: z.string().min(1).max(50),
+    frequency_type: z.enum(['total', 'daily', 'weekly']),
+    goal_type: z.enum(['accumulation', 'measurement']).default('accumulation'),
+    start_value: z.number().positive().optional(),
+  })
+  .refine(
+    (data) => data.goal_type !== 'measurement' || data.start_value !== undefined,
+    { message: 'start_value is required for measurement goals', path: ['start_value'] },
+  );
 
 const updateGoalSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   target_value: z.number().positive().optional(),
   unit: z.string().min(1).max(50).optional(),
   frequency_type: z.enum(['total', 'daily', 'weekly']).optional(),
+  goal_type: z.enum(['accumulation', 'measurement']).optional(),
+  start_value: z.number().positive().nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
 });
 
@@ -75,8 +84,8 @@ router.post(
 
       for (const goal of goals) {
         await pool.query(
-          `INSERT INTO goals (user_id, category_id, period_key, title, target_value, unit, frequency_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO goals (user_id, category_id, period_key, title, target_value, unit, frequency_type, goal_type, start_value)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
           [
             goal.user_id,
             goal.category_id,
@@ -85,6 +94,8 @@ router.post(
             goal.target_value,
             goal.unit,
             goal.frequency_type,
+            goal.goal_type,
+            goal.start_value,
           ],
         );
         copied++;
@@ -103,13 +114,13 @@ router.post(
   validate(createGoalSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user_id, category_id, period_key, title, target_value, unit, frequency_type } =
+      const { user_id, category_id, period_key, title, target_value, unit, frequency_type, goal_type, start_value } =
         req.body as z.infer<typeof createGoalSchema>;
       const result = await pool.query(
-        `INSERT INTO goals (user_id, category_id, period_key, title, target_value, unit, frequency_type)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO goals (user_id, category_id, period_key, title, target_value, unit, frequency_type, goal_type, start_value)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
-        [user_id, category_id ?? null, period_key, title, target_value, unit, frequency_type],
+        [user_id, category_id ?? null, period_key, title, target_value, unit, frequency_type, goal_type, start_value ?? null],
       );
       res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -146,6 +157,14 @@ router.put(
       if (fields.frequency_type !== undefined) {
         setClauses.push(`frequency_type = $${paramIdx++}`);
         values.push(fields.frequency_type);
+      }
+      if (fields.goal_type !== undefined) {
+        setClauses.push(`goal_type = $${paramIdx++}`);
+        values.push(fields.goal_type);
+      }
+      if (fields.start_value !== undefined) {
+        setClauses.push(`start_value = $${paramIdx++}`);
+        values.push(fields.start_value);
       }
       if (fields.category_id !== undefined) {
         setClauses.push(`category_id = $${paramIdx++}`);

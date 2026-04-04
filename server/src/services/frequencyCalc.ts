@@ -1,5 +1,5 @@
 import { getDaysInMonth, differenceInDays, parseISO, startOfMonth } from 'date-fns';
-import { FrequencyType } from '../types';
+import { FrequencyType, GoalType } from '../types';
 
 export interface CalcProgressResult {
   percentage: number;
@@ -13,7 +13,17 @@ export function calcProgress(
   targetValue: number,
   periodKey: string, // 'YYYY-MM'
   referenceDate?: Date,
+  goalType?: GoalType,
+  startValue?: number,
 ): CalcProgressResult {
+  if (goalType === 'measurement') {
+    const start = startValue ?? currentValue;
+    const span = Math.abs(start - targetValue);
+    if (span === 0) return { percentage: 0, expectedValue: null, onTrack: null };
+    const moved = Math.abs(start - currentValue);
+    return { percentage: (moved / span) * 100, expectedValue: null, onTrack: null };
+  }
+
   if (frequencyType === 'total') {
     const percentage = targetValue === 0 ? 0 : (currentValue / targetValue) * 100;
     return { percentage, expectedValue: null, onTrack: null };

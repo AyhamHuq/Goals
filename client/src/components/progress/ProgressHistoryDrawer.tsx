@@ -26,7 +26,7 @@ import { GoalWithProgress, ProgressEntry } from '../../types';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
 import { useToast } from '../Toast';
 import { formatLoggedFor } from '../../utils/dates';
-import { getFrequencyLabel } from '../../utils/frequency';
+import { getMonthlyLabel } from '../../utils/frequency';
 
 interface ProgressHistoryDrawerProps {
   open: boolean;
@@ -140,9 +140,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             <Box flex={1} mr={1} minWidth={0}>
               <Typography variant="h6" noWrap>
                 {(() => {
-                  const base = goal.goal_type === 'measurement'
-                    ? `Target: ${goal.target_value} ${goal.unit}`
-                    : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+                  const base = getMonthlyLabel(goal);
                   return goal.category ? `${goal.category.name}: ${base}` : base;
                 })()}
               </Typography>

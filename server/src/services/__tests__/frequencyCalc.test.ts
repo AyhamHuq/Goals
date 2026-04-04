@@ -97,38 +97,62 @@ describe('calcProgress — weekly', () => {
 describe('calcProgress — measurement', () => {
   it('halfway from 90kg to 75kg returns 50%', () => {
     // span=15, moved=7.5
-    const result = calcProgress('total', 82.5, 75, PERIOD, undefined, 'measurement', 90);
+    const ref = new Date(2026, 3, 15);
+    const result = calcProgress('total', 82.5, 75, PERIOD, ref, 'measurement', 90);
     expect(result.percentage).toBeCloseTo(50);
-    expect(result.expectedValue).toBeNull();
-    expect(result.onTrack).toBeNull();
   });
 
   it('goal exactly reached returns 100%', () => {
-    const result = calcProgress('total', 75, 75, PERIOD, undefined, 'measurement', 90);
+    const ref = new Date(2026, 3, 15);
+    const result = calcProgress('total', 75, 75, PERIOD, ref, 'measurement', 90);
     expect(result.percentage).toBeCloseTo(100);
   });
 
   it('past target returns > 100%', () => {
     // moved=16, span=15 → 106.67%
-    const result = calcProgress('total', 74, 75, PERIOD, undefined, 'measurement', 90);
+    const ref = new Date(2026, 3, 15);
+    const result = calcProgress('total', 74, 75, PERIOD, ref, 'measurement', 90);
     expect(result.percentage).toBeGreaterThan(100);
   });
 
   it('no progress yet returns 0%', () => {
     // currentValue = startValue → moved=0
-    const result = calcProgress('total', 90, 75, PERIOD, undefined, 'measurement', 90);
+    const ref = new Date(2026, 3, 15);
+    const result = calcProgress('total', 90, 75, PERIOD, ref, 'measurement', 90);
     expect(result.percentage).toBe(0);
   });
 
-  it('zero span (start equals target) returns 0% safely', () => {
+  it('zero span (start equals target) returns 0% safely with no pacing', () => {
     const result = calcProgress('total', 75, 75, PERIOD, undefined, 'measurement', 75);
     expect(result.percentage).toBe(0);
-  });
-
-  it('always returns null for expectedValue and onTrack', () => {
-    const result = calcProgress('total', 82.5, 75, PERIOD, undefined, 'measurement', 90);
     expect(result.expectedValue).toBeNull();
     expect(result.onTrack).toBeNull();
+  });
+
+  it('computes expected value as linear interpolation for a reducing goal', () => {
+    // Losing weight: 90kg → 75kg over April (30 days)
+    // Day 10: expected = 90 + (75-90) * (10/30) = 90 - 5 = 85
+    const ref = new Date(2026, 3, 10);
+    const result = calcProgress('total', 86, 75, PERIOD, ref, 'measurement', 90);
+    expect(result.expectedValue).toBeCloseTo(85);
+    // current=86 > expected=85 for weight loss → behind
+    expect(result.onTrack).toBe(false);
+  });
+
+  it('on track when current is at or below expected for a reducing goal', () => {
+    const ref = new Date(2026, 3, 10);
+    // expected=85, current=84
+    const result = calcProgress('total', 84, 75, PERIOD, ref, 'measurement', 90);
+    expect(result.onTrack).toBe(true);
+  });
+
+  it('computes expected value for an increasing goal', () => {
+    // Gaining muscle: 60kg → 75kg over April
+    // Day 10: expected = 60 + (75-60) * (10/30) = 60 + 5 = 65
+    const ref = new Date(2026, 3, 10);
+    const result = calcProgress('total', 66, 75, PERIOD, ref, 'measurement', 60);
+    expect(result.expectedValue).toBeCloseTo(65);
+    expect(result.onTrack).toBe(true); // 66 >= 65
   });
 
   it('does not affect accumulation goals when goalType omitted', () => {

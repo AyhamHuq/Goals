@@ -11,7 +11,7 @@ import { alpha } from '@mui/material/styles';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { GoalWithProgress } from '../../types';
-import { formatPercentage, getFrequencyLabel } from '../../utils/frequency';
+import { formatPercentage, getMonthlyDisplay, getMonthlyLabel, fmtValue } from '../../utils/frequency';
 import QuickLogButton from '../progress/QuickLogButton';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
 
@@ -25,7 +25,8 @@ type PacingColor = 'success' | 'warning' | 'error' | 'primary';
 function getProgressColor(goal: GoalWithProgress): PacingColor {
   if (goal.on_track === null) return 'primary';
   if (goal.on_track) return 'success';
-  if (goal.expected_value !== null && goal.expected_value > 0) {
+  // Ratio-based warning only applies to accumulation goals (higher = better)
+  if (goal.goal_type !== 'measurement' && goal.expected_value !== null && goal.expected_value > 0) {
     const ratio = goal.current_value / goal.expected_value;
     if (ratio >= 0.8) return 'warning';
   }
@@ -44,12 +45,14 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
   const color = getProgressColor(goal);
   const hex = colorHexMap[color];
   const barValue = Math.min(goal.percentage, 100);
-  const showPacing = goal.frequency_type !== 'total' && goal.on_track !== null;
+  // Show on-track indicator for any goal that has a pacing expectation
+  const showPacing = goal.on_track !== null;
 
-  const baseLabel = goal.goal_type === 'measurement'
-    ? `Target: ${goal.target_value} ${goal.unit}`
-    : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+  const baseLabel = getMonthlyLabel(goal);
   const derivedLabel = goal.category ? `${goal.category.name}: ${baseLabel}` : baseLabel;
+
+  const monthly = getMonthlyDisplay(goal);
+  const approx = monthly.isApprox ? '~' : '';
 
   return (
     <>
@@ -65,7 +68,7 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
         onClick={() => setDrawerOpen(true)}
       >
         <CardContent sx={{ pb: '12px !important' }}>
-          {/* Header: category-prefixed derived label */}
+          {/* Header: category-prefixed monthly label */}
           <Typography
             variant="subtitle1"
             fontWeight={700}
@@ -104,15 +107,15 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
             />
           </Box>
 
-          {/* Bottom row: current/target | on-track indicator */}
+          {/* Bottom row: current/target (normalised) | on-track indicator */}
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" color="text.secondary">
               {goal.goal_type === 'measurement'
-                ? `${goal.current_value} ${goal.unit} → ${goal.target_value} ${goal.unit}`
-                : `${goal.current_value} / ${goal.target_value} ${goal.unit}${
-                    goal.frequency_type !== 'total' && goal.expected_value !== null
-                      ? ` · ${goal.expected_value.toFixed(1)} expected`
-                      : ''
+                ? `${fmtValue(goal.current_value)} ${goal.unit} → ${goal.target_value} ${goal.unit}${
+                    monthly.expected !== null ? ` · ${fmtValue(monthly.expected)} expected` : ''
+                  }`
+                : `${fmtValue(monthly.current)} / ${approx}${fmtValue(monthly.monthlyTarget)} ${monthly.unit}${
+                    monthly.expected !== null ? ` · ${fmtValue(monthly.expected)} expected` : ''
                   }`
               }
             </Typography>

@@ -24,7 +24,7 @@ import { useGroupDashboard } from '../../hooks/useDashboard';
 import { usePeriodContext } from '../../context/PeriodContext';
 import { useUserContext } from '../../context/UserContext';
 import { GoalWithProgress, UserGoalSummary } from '../../types';
-import { formatPercentage, getFrequencyLabel } from '../../utils/frequency';
+import { formatPercentage, getMonthlyLabel, getMonthlyDisplay, fmtValue } from '../../utils/frequency';
 import { periodKeyToLabel, periodProportionalThreshold } from '../../utils/dates';
 import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
@@ -43,20 +43,15 @@ const colorHexMap: Record<PacingColor, string> = {
 function getProgressColor(goal: GoalWithProgress): PacingColor {
   if (goal.on_track === null) return 'primary';
   if (goal.on_track) return 'success';
-  if (goal.expected_value !== null && goal.expected_value > 0) {
+  if (goal.goal_type !== 'measurement' && goal.expected_value !== null && goal.expected_value > 0) {
     const ratio = goal.current_value / goal.expected_value;
     if (ratio >= 0.8) return 'warning';
   }
   return 'error';
 }
 
-function goalBaseLabel(goal: GoalWithProgress): string {
-  if (goal.goal_type === 'measurement') return `Target: ${goal.target_value} ${goal.unit}`;
-  return getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
-}
-
 function goalDerivedLabel(goal: GoalWithProgress, includeCategory = false): string {
-  const base = goalBaseLabel(goal);
+  const base = getMonthlyLabel(goal);
   return includeCategory && goal.category ? `${goal.category.name}: ${base}` : base;
 }
 
@@ -193,6 +188,7 @@ function OverviewTab({
             (g) => g.on_track === true || (g.on_track === null && g.percentage >= threshold),
           ).length;
           const barColor: 'success' | 'warning' | 'error' =
+            goals.length > 0 && onTrack === goals.length ? 'success' :
             avg >= 80 ? 'success' : avg >= 50 ? 'warning' : 'error';
           const isChampion = avg >= 80;
           const isExpanded = expandedUserId === user.id;
@@ -308,14 +304,14 @@ function OverviewTab({
                             />
                             <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.3}>
                               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                                {goal.goal_type === 'measurement'
-                                  ? `${goal.current_value} → ${goal.target_value} ${goal.unit}`
-                                  : `${goal.current_value} / ${goal.target_value} ${goal.unit}${
-                                      goal.expected_value !== null
-                                        ? ` · ${goal.expected_value.toFixed(1)} expected`
-                                        : ''
-                                    }`
-                                }
+                                {(() => {
+                                  const m = getMonthlyDisplay(goal);
+                                  const ap = m.isApprox ? '~' : '';
+                                  if (goal.goal_type === 'measurement') {
+                                    return `${fmtValue(goal.current_value)} → ${goal.target_value} ${goal.unit}${m.expected !== null ? ` · ${fmtValue(m.expected)} exp` : ''}`;
+                                  }
+                                  return `${fmtValue(m.current)} / ${ap}${fmtValue(m.monthlyTarget)} ${m.unit}${m.expected !== null ? ` · ${fmtValue(m.expected)} exp` : ''}`;
+                                })()}
                               </Typography>
                               {goal.on_track !== null && (
                                 <Box display="flex" alignItems="center" gap={0.3}>

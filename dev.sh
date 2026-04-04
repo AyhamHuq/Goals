@@ -20,6 +20,7 @@ warn()   { echo -e "${YELLOW}[goals]${NC} $*"; }
 error()  { echo -e "${RED}[goals]${NC} $*"; exit 1; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILES=(-f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.dev.yml")
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 
@@ -57,11 +58,11 @@ setup_env() {
 
 start_db() {
   log "Starting PostgreSQL..."
-  docker compose -f "$ROOT/docker-compose.yml" up db -d
+  docker compose "${COMPOSE_FILES[@]}" up db -d
 
   log "Waiting for PostgreSQL to be healthy..."
   local attempts=0
-  until docker compose -f "$ROOT/docker-compose.yml" exec -T db \
+  until docker compose "${COMPOSE_FILES[@]}" exec -T db \
       pg_isready -U goals -d goals -q 2>/dev/null; do
     attempts=$((attempts + 1))
     if [[ $attempts -ge 30 ]]; then
@@ -74,7 +75,7 @@ start_db() {
 
 stop_db() {
   log "Stopping database..."
-  docker compose -f "$ROOT/docker-compose.yml" stop db
+  docker compose "${COMPOSE_FILES[@]}" stop db
   ok "Database stopped"
 }
 
@@ -82,7 +83,7 @@ reset_db() {
   warn "Resetting database — all data will be lost!"
   read -r -p "Continue? [y/N] " confirm
   [[ "$confirm" =~ ^[Yy]$ ]] || { log "Aborted."; exit 0; }
-  docker compose -f "$ROOT/docker-compose.yml" down -v
+  docker compose "${COMPOSE_FILES[@]}" down -v
   start_db
   run_migrate
   run_seed
@@ -119,7 +120,7 @@ run_seed() {
 
 check_seeded() {
   local count
-  count=$(docker compose -f "$ROOT/docker-compose.yml" exec -T db \
+  count=$(docker compose "${COMPOSE_FILES[@]}" exec -T db \
     psql -U goals -d goals -tAc "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
   count=$(echo "$count" | tr -d '[:space:]')
   if [[ "$count" -eq 0 ]]; then
@@ -186,7 +187,7 @@ case "$cmd" in
     start_dev_servers
     ;;
   logs)
-    docker compose -f "$ROOT/docker-compose.yml" logs -f
+    docker compose "${COMPOSE_FILES[@]}" logs -f
     ;;
   seed)
     setup_env

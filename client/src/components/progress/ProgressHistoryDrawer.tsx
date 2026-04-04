@@ -26,11 +26,13 @@ import { GoalWithProgress, ProgressEntry } from '../../types';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
 import { useToast } from '../Toast';
 import { formatLoggedFor } from '../../utils/dates';
+import { getFrequencyLabel } from '../../utils/frequency';
 
 interface ProgressHistoryDrawerProps {
   open: boolean;
   onClose: () => void;
   goal: GoalWithProgress & { id: string };
+  readOnly?: boolean;
 }
 
 function EditRow({
@@ -74,7 +76,7 @@ function EditRow({
   );
 }
 
-export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressHistoryDrawerProps) {
+export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false }: ProgressHistoryDrawerProps) {
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);
   const updateProgress = useUpdateProgress();
   const deleteProgress = useDeleteProgress();
@@ -135,14 +137,18 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
         <Box sx={{ px: 2, pb: 2 }}>
           {/* Header */}
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
-            <Typography
-              variant="h6"
-              noWrap
-              sx={{ flex: 1, mr: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
-              title={goal.title}
-            >
-              {goal.title}
-            </Typography>
+            <Box flex={1} mr={1} minWidth={0}>
+              <Typography variant="h6" noWrap>
+                {goal.goal_type === 'measurement'
+                  ? `Target: ${goal.target_value} ${goal.unit}`
+                  : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit)}
+              </Typography>
+              {goal.title && (
+                <Typography variant="caption" color="text.secondary" noWrap display="block">
+                  {goal.title}
+                </Typography>
+              )}
+            </Box>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
@@ -197,18 +203,20 @@ export default function ProgressHistoryDrawer({ open, onClose, goal }: ProgressH
                           )}
                         </Box>
                         {/* Actions on right */}
-                        <Box display="flex" gap={0.25}>
-                          <IconButton size="small" onClick={() => setEditingId(entry.id)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteConfirmId(entry.id)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
+                        {!readOnly && (
+                          <Box display="flex" gap={0.25}>
+                            <IconButton size="small" onClick={() => setEditingId(entry.id)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setDeleteConfirmId(entry.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
                       </Box>
                     )}
                   </ListItem>

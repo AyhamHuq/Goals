@@ -46,27 +46,32 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
   const barValue = Math.min(goal.percentage, 100);
   const showPacing = goal.frequency_type !== 'total' && goal.on_track !== null;
 
+  const derivedLabel = goal.goal_type === 'measurement'
+    ? `Target: ${goal.target_value} ${goal.unit}`
+    : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit);
+
   return (
     <>
       <Card
         sx={{
-          cursor: readOnly ? 'default' : 'pointer',
+          cursor: 'pointer',
           opacity: readOnly ? 0.85 : 1,
           borderLeft: `4px solid ${hex}`,
           borderRadius: 2,
           transition: 'box-shadow 0.2s ease, opacity 0.2s',
+          '&:hover': { boxShadow: 3 },
         }}
-        onClick={() => !readOnly && setDrawerOpen(true)}
+        onClick={() => setDrawerOpen(true)}
       >
         <CardContent sx={{ pb: '12px !important' }}>
-          {/* Title row */}
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
+          {/* Header: derived label + category chip */}
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={goal.title ? 0.25 : 1.25}>
             <Typography
               variant="subtitle1"
               fontWeight={700}
               sx={{ flex: 1, mr: 1, lineHeight: 1.3 }}
             >
-              {goal.title}
+              {derivedLabel}
             </Typography>
             {goal.category && (
               <Chip
@@ -83,13 +88,12 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
             )}
           </Box>
 
-          {/* Frequency label */}
-          <Typography variant="caption" color="text.secondary" display="block" mb={1.25}>
-            {goal.goal_type === 'measurement'
-              ? `Target: ${goal.target_value} ${goal.unit}`
-              : getFrequencyLabel(goal.frequency_type, goal.target_value, goal.unit)
-            }
-          </Typography>
+          {/* Note (user-set title) */}
+          {goal.title && (
+            <Typography variant="caption" color="text.secondary" display="block" mb={1.25}>
+              {goal.title}
+            </Typography>
+          )}
 
           {/* Progress bar + percentage pill */}
           <Box display="flex" alignItems="center" gap={1.5} mb={0.75}>
@@ -156,13 +160,12 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
         </CardContent>
       </Card>
 
-      {!readOnly && (
-        <ProgressHistoryDrawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          goal={goal}
-        />
-      )}
+      <ProgressHistoryDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        goal={goal}
+        readOnly={readOnly}
+      />
     </>
   );
 }

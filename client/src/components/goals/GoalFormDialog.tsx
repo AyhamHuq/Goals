@@ -56,9 +56,9 @@ const defaultForm: FormState = {
 };
 
 const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
-  { value: 'total',  label: 'Total for the month', description: 'Track a total amount for the month' },
-  { value: 'daily',  label: 'Daily target',         description: 'Tracks pacing: target × days elapsed' },
-  { value: 'weekly', label: 'Weekly target',        description: 'Tracks pacing: target × weeks elapsed' },
+  { value: 'total',  label: 'Monthly total',  description: 'A fixed total for the whole month — no daily/weekly pacing (e.g. 20 lectures total)' },
+  { value: 'daily',  label: 'Daily target',   description: 'Amount per day — paces against days elapsed (e.g. 1 lecture/day ≈ 30 total in April)' },
+  { value: 'weekly', label: 'Weekly target',  description: 'Amount per week — paces against weeks elapsed (e.g. 3 lectures/week ≈ 15 total in April)' },
 ];
 
 export default function GoalFormDialog({

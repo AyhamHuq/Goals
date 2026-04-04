@@ -84,7 +84,7 @@ To add a migration: create `002_add_something.sql` in the migrations directory. 
 
 ```
 GET /health
-→ { status: 'ok', timestamp: '2026-04-04T...' }
+→ { status: 'ok', sandbox: false, timestamp: '2026-04-04T...' }
 ```
 
 Used by Docker healthcheck and load balancers.

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middleware/errorHandler';
+import { config } from './config';
 import usersRouter from './routes/users';
 import categoriesRouter from './routes/categories';
 import goalsRouter from './routes/goals';
@@ -14,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', sandbox: config.sandbox, timestamp: new Date().toISOString() });
 });
 
 app.use('/api/users', usersRouter);

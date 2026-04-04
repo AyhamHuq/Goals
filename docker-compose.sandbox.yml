@@ -1,0 +1,7 @@
+version: '3.9'
+
+services:
+  server:
+    environment:
+      DATABASE_URL: postgres://goals:${DB_PASSWORD:-goals}@db:5432/goals_sandbox
+      SANDBOX: "true"

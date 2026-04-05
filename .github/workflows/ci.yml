@@ -196,8 +196,8 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/goals
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin ${{ github.head_ref }}
+            git reset --hard origin/${{ github.head_ref }}
             docker compose \
               -p goals-staging \
               --env-file /opt/goals/staging/.env \

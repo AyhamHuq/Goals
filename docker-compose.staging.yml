@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: goals_staging
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goals -d goals_staging"]
+
+  server:
+    environment:
+      DATABASE_URL: postgres://goals:${DB_PASSWORD:-goals}@db:5432/goals_staging
+      NODE_ENV: staging
+
+  client:
+    ports:
+      - "3101:80"

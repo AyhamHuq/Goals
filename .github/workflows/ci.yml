@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   # ── Unit tests ──────────────────────────────────────────────────────────────
@@ -176,3 +178,55 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - run: npm run test:integration
+
+  # ── Deploy ──────────────────────────────────────────────────────────────────
+
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    environment: staging
+    steps:
+      - name: Deploy staging via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/goals
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose \
+              -p goals-staging \
+              --env-file /opt/goals/staging/.env \
+              -f docker-compose.yml \
+              -f docker-compose.staging.yml \
+              up -d --build --remove-orphans
+            docker image prune -f
+
+  deploy-prod:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy production via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/goals
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose \
+              -p goals-prod \
+              --env-file /opt/goals/prod/.env \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              up -d --build --remove-orphans
+            docker image prune -f

@@ -21,7 +21,7 @@ A lightweight web app for small, trusted groups (families, close friends) to set
 | Backend | Node.js + Express + TypeScript |
 | Validation | zod |
 | Database | PostgreSQL 16 |
-| Deployment | Docker Compose (nginx + Express + Postgres) |
+| Deployment | Docker Compose (nginx + Express + Postgres) on Hetzner CX23 |
 
 ## Project Structure
 
@@ -62,8 +62,11 @@ Goals/
 │   ├── init.sql             # Placeholder — schema managed by migrate.ts
 │   └── init-sandbox.sql     # Creates goals_sandbox DB on first Postgres init
 │
-├── docker-compose.yml           # 3 services, healthchecks, env-var config
-├── docker-compose.sandbox.yml   # Override: points server at goals_sandbox DB
+├── docker-compose.yml           # Base: 3 services, healthchecks, env-var config
+├── docker-compose.prod.yml      # Override: pins client to port 3100
+├── docker-compose.staging.yml   # Override: goals_staging DB, port 3101
+├── docker-compose.sandbox.yml   # Override: goals_sandbox DB (local dev only)
+├── Caddyfile                    # Reverse proxy: routes domains to prod/staging ports
 ├── .env.example                 # All required vars
 └── dev.sh                       # Local dev setup script
 ```
@@ -98,19 +101,49 @@ cd client && npm install && npm run dev
 
 Frontend: http://localhost:5173 · Backend: http://localhost:3001 · Health: http://localhost:3001/health
 
-## Production Deployment
+## Deployment
 
-```bash
-cp .env.example .env
-# Set DB_PASSWORD, APP_PORT (default 80), NODE_ENV=production
+The app runs on a single Hetzner CX23 server with two isolated environments — **staging** and **production** — sharing the same machine via Docker Compose project isolation.
 
-docker compose up --build -d
+```
+http://server-ip       → prod    (port 80)
+http://server-ip:3101  → staging (port 3101)
 ```
 
-Migrations run automatically on server startup. Seed is only needed once:
+Each environment is a fully independent Docker Compose project (`-p goals-prod` / `-p goals-staging`) with its own containers, network, volume, and database (`goals` / `goals_staging`).
+
+### CI/CD Flow
+
+- **Open/push to a PR** → tests run + auto-deploy to staging
+- **Merge to `main`** → auto-deploy to production
+
+### First-Time Server Setup
+
 ```bash
-docker compose exec server node -e "require('./dist/seed')"
+# Install Docker, clone repo, create env files
+mkdir -p /opt/goals/prod /opt/goals/staging
+# /opt/goals/prod/.env  — DB_PASSWORD, NODE_ENV=production, SEED_USERS
+# /opt/goals/staging/.env — DB_PASSWORD, NODE_ENV=staging, SEED_USERS
+
+docker compose -p goals-staging --env-file /opt/goals/staging/.env \
+  -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+
+docker compose -p goals-prod --env-file /opt/goals/prod/.env \
+  -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
+
+Migrations run automatically on server startup. Seed is only needed once per environment:
+```bash
+docker compose -p goals-prod exec server node -e "require('./dist/seed')"
+```
+
+### GitHub Secrets Required
+
+| Secret | Value |
+|--------|-------|
+| `HETZNER_HOST` | Server IP |
+| `HETZNER_USER` | SSH username |
+| `HETZNER_SSH_KEY` | Private key contents (ed25519) |
 
 ## API
 
@@ -143,7 +176,8 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 
 ## Roadmap
 
-- **V2**: Authentication (OAuth), real Twilio SMS, admin role
+- **V2**: Custom domain + Caddy reverse proxy (HTTPS via Let's Encrypt, DuckDNS for free subdomain)
+- **V3**: Authentication (OAuth), real Twilio SMS, admin role
 - **V3**: Comments, streak tracking, pacing suggestions
 - **V4**: Category leaderboards, shared group goals
 - **V5**: Charts, heatmaps, PWA / offline support

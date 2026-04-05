@@ -251,13 +251,46 @@ Edge cases handled:
 
 To activate in V2: uncomment the Twilio client code and install the `twilio` npm package.
 
-## Docker Compose Architecture
+## Deployment Architecture
+
+### Production + Staging on One Server
+
+Both environments run on the same Hetzner CX23 using Docker Compose project isolation:
+
+```
+Host (Hetzner CX23)
+│
+├── Docker project: goals-prod   (compose -p goals-prod -f docker-compose.yml -f docker-compose.prod.yml)
+│   ├── client/nginx  :80   (host-bound) ← http://server-ip
+│   ├── server        :3001 (internal only)
+│   └── db            :5432 (internal only)   database: goals
+│
+└── Docker project: goals-staging (compose -p goals-staging -f docker-compose.yml -f docker-compose.staging.yml)
+    ├── client/nginx  :3101 (host-bound) ← http://server-ip:3101
+    ├── server        :3002 (internal only)
+    └── db            :5433 (internal only)   database: goals_staging
+```
+
+The `-p` (project name) flag gives each stack its own namespaced containers, network, and volume (`goals-prod_pgdata` vs `goals-staging_pgdata`), so the two environments are fully isolated at the data layer.
+
+A `Caddyfile` is included in the repo for a future upgrade to HTTPS with a custom domain (see Roadmap V2). It is not used in the current deployment.
+
+### Per-Environment Docker Compose
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | Base: 3 services, healthchecks, shared config |
+| `docker-compose.prod.yml` | Override: pins client to port 3100 |
+| `docker-compose.staging.yml` | Override: port 3101, `goals_staging` DB, `NODE_ENV=staging` |
+| `docker-compose.sandbox.yml` | Local dev only: `goals_sandbox` DB, `SANDBOX=true` |
+
+### Single-Stack Internal Architecture
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │    nginx      │────▶│   Express    │────▶│  Postgres 16 │
 │   (client)    │     │   (server)   │     │    (db)      │
-│  :${APP_PORT} │     │    :3001     │     │   :5432      │
+│  :3100/3101   │     │    :3001     │     │   :5432      │
 └──────────────┘     └──────────────┘     └──────────────┘
        │
        ├── Serves React build (static files)
@@ -267,17 +300,30 @@ All services: restart: unless-stopped, healthcheck configured
 Startup order: db healthy → server healthy → client starts
 ```
 
+### CI/CD Pipeline
+
+Defined in `.github/workflows/ci.yml`:
+
+| Trigger | Jobs run |
+|---------|----------|
+| PR to `main` | All test/lint/typecheck/build jobs |
+| Push to `main` (merged PR) | All jobs + `deploy-staging` (auto SSH deploy) |
+| `workflow_dispatch` (manual) | `deploy-prod` only (manual SSH deploy) |
+
+Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker compose up -d --build`.
+
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DB_PASSWORD` | `goals` | PostgreSQL password |
-| `APP_PORT` | `80` | Host port for the client/nginx |
-| `NODE_ENV` | `production` | Node environment |
+| `NODE_ENV` | `production` | Node environment (`production` / `staging`) |
 | `TWILIO_ENABLED` | `false` | Set `true` to enable real SMS in V2 |
 | `TWILIO_ACCOUNT_SID` | — | Twilio credentials (V2) |
 | `TWILIO_AUTH_TOKEN` | — | Twilio credentials (V2) |
 | `TWILIO_FROM_NUMBER` | — | Twilio sender number (V2) |
+
+`APP_PORT` is no longer used — ports are pinned in the prod/staging override files.
 
 ## Key Dependencies
 

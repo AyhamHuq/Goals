@@ -81,9 +81,16 @@ stop_db() {
 }
 
 reset_db() {
-  warn "Resetting database — all data will be lost!"
-  read -r -p "Continue? [y/N] " confirm
-  [[ "$confirm" =~ ^[Yy]$ ]] || { log "Aborted."; exit 0; }
+  # Block resets in production
+  if [[ "${NODE_ENV:-development}" == "production" ]]; then
+    error "Cannot reset database in production. Unset NODE_ENV=production to proceed."
+  fi
+  warn "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  warn "  DATABASE RESET — ALL DATA WILL BE LOST"
+  warn "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  warn "  Type RESET (all caps) to confirm, anything else to abort:"
+  read -r -p "Confirm: " confirm
+  [[ "$confirm" == "RESET" ]] || { log "Aborted."; exit 0; }
   docker compose "${COMPOSE_FILES[@]}" down -v
   start_db
   run_migrate

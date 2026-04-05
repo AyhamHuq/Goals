@@ -114,8 +114,9 @@ describe('getPersonalDashboard — measurement goal', () => {
     const goal = result.goals[0];
     expect(goal.current_value).toBe(82.5);
     expect(goal.percentage).toBeCloseTo(50); // |90-82.5| / |90-75| = 7.5/15 = 50%
-    expect(goal.on_track).toBeNull();
-    expect(goal.expected_value).toBeNull();
+    // Measurement goals with a reference date get paced: expected at day 10 = 90 + (75-90)*(10/30) = 85
+    expect(goal.expected_value).toBeCloseTo(85);
+    expect(goal.on_track).toBe(true); // 82.5 < 85 for a reducing goal → ahead of pace
   });
 
   it('falls back to start_value when no entries logged', async () => {
@@ -145,7 +146,7 @@ describe('getPersonalDashboard — measurement goal', () => {
     expect(goal.percentage).toBe(0);
   });
 
-  it('measurement goal has null expected_value and on_track', async () => {
+  it('measurement goal computes expected_value and on_track from pacing', async () => {
     mockQuery
       .mockResolvedValueOnce({
         rows: [
@@ -166,8 +167,10 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [] });
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
-    expect(result.goals[0].expected_value).toBeNull();
-    expect(result.goals[0].on_track).toBeNull();
+    // REF_DATE = April 10 → expected = 90 + (75-90)*(10/30) = 85
+    expect(result.goals[0].expected_value).toBeCloseTo(85);
+    // current=80 < expected=85 for reducing goal → on track
+    expect(result.goals[0].on_track).toBe(true);
   });
 });
 

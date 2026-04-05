@@ -1,4 +1,4 @@
-import { getDaysInMonth, differenceInDays, parseISO, startOfMonth } from 'date-fns';
+import { getDaysInMonth, differenceInDays, parseISO } from 'date-fns';
 import { FrequencyType, GoalType } from '../types';
 
 export interface CalcProgressResult {

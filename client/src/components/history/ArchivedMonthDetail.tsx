@@ -28,7 +28,7 @@ export default function ArchivedMonthDetail({
 }: ArchivedMonthDetailProps) {
   const { data, isLoading, isError } = useHistoryDetail(userId, periodKey);
   const copyFromPrevious = useCopyFromPrevious();
-  const { periodKey: currentPeriodKey, isCurrentPeriod } = usePeriodContext();
+  const { isCurrentPeriod } = usePeriodContext();
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const isPreviousPeriod = periodKey !== currentMonth;

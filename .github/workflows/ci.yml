@@ -198,7 +198,7 @@ jobs:
             cd /opt/goals
             git fetch origin ${{ github.head_ref }}
             git reset --hard origin/${{ github.head_ref }}
-            docker compose \
+            APP_PORT=3101 docker compose \
               -p goals-staging \
               --env-file /opt/goals/staging/.env \
               -f docker-compose.yml \
@@ -223,7 +223,7 @@ jobs:
             cd /opt/goals
             git fetch origin main
             git reset --hard origin/main
-            docker compose \
+            APP_PORT=3100 docker compose \
               -p goals-prod \
               --env-file /opt/goals/prod/.env \
               -f docker-compose.yml \

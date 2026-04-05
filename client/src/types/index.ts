@@ -49,6 +49,9 @@ export interface ProgressEntry {
 
 export interface GoalWithProgress {
   id: string;
+  user_id: string;
+  category_id: string | null;
+  period_key: string;
   title: string;
   category: { id: string; name: string } | null;
   target_value: number;

@@ -12,6 +12,9 @@ interface RecentEntry {
 
 interface GoalWithProgress {
   id: string;
+  user_id: string;
+  category_id: string | null;
+  period_key: string;
   title: string;
   category: { id: string; name: string } | null;
   target_value: number;
@@ -115,6 +118,9 @@ export async function getPersonalDashboard(
 
     goals.push({
       id: row.id,
+      user_id: row.user_id,
+      category_id: row.category_id ?? null,
+      period_key: periodKey,
       title: row.title,
       category: row.cat_id ? { id: row.cat_id, name: row.cat_name } : null,
       target_value: parseFloat(row.target_value),
@@ -193,6 +199,9 @@ export async function getGroupDashboard(
       );
       return {
         id: row.id,
+        user_id: row.user_id,
+        category_id: row.category_id ?? null,
+        period_key: periodKey,
         title: row.title,
         category: row.cat_id ? { id: row.cat_id, name: row.cat_name } : null,
         target_value: targetValue,

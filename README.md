@@ -4,7 +4,8 @@ A lightweight web app for small, trusted groups (families, close friends) to set
 
 ## What It Does
 
-- **Monthly goals**: Each user creates goals with a title, category, target value, unit, and frequency (total, daily, or weekly).
+- **Monthly goals**: Each user creates goals with a title, category (Weight Loss, Fitness, Arabic Learning, Quran, Professional Learning), target value, unit, and frequency (total, daily, or weekly).
+- **Multi-unit logging**: Log progress in any compatible unit (e.g. log Quran pages or juz, Fitness minutes or hours or steps). Values are converted to the goal's stored unit automatically.
 - **Progress logging**: Log incremental progress with support for backdating. Current value is always `SUM` of entries — never cached.
 - **Personal dashboard**: Goals with progress bars, percentage complete, pacing indicators (on-track vs behind), and a greeting.
 - **Group dashboard**: Every group member's goals and avg progress side-by-side.

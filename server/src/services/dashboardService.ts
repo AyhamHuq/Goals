@@ -8,6 +8,8 @@ interface RecentEntry {
   value: number;
   logged_for: string;
   note: string | null;
+  logged_unit: string | null;
+  logged_value: number | null;
 }
 
 interface GoalWithProgress {
@@ -98,7 +100,7 @@ export async function getPersonalDashboard(
 
     // Get recent 5 entries
     const recentResult = await pool.query(
-      `SELECT id, value, logged_for, note FROM progress_entries
+      `SELECT id, value, logged_for, note, logged_unit, logged_value FROM progress_entries
        WHERE goal_id = $1
        ORDER BY logged_for DESC, created_at DESC
        LIMIT 5`,

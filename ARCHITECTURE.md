@@ -48,13 +48,15 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_period ON goals(user_id, period_key);
 CREATE INDEX IF NOT EXISTS idx_goals_category ON goals(category_id);
 
 CREATE TABLE IF NOT EXISTS progress_entries (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    goal_id     UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
-    value       NUMERIC(10,2) NOT NULL,
-    logged_for  DATE NOT NULL,
-    note        VARCHAR(500),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    goal_id      UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    value        NUMERIC(10,2) NOT NULL,
+    logged_for   DATE NOT NULL,
+    note         VARCHAR(500),
+    logged_unit  VARCHAR(50),    -- original unit entered by user (if different from goal unit)
+    logged_value NUMERIC(10,2),  -- original value entered by user before conversion
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_progress_goal ON progress_entries(goal_id);
 CREATE INDEX IF NOT EXISTS idx_progress_logged_for ON progress_entries(goal_id, logged_for);
@@ -139,11 +141,11 @@ GET /api/progress?goal_id=<uuid>
 → ProgressEntry[]
 
 POST /api/progress
-Body: { goal_id, value, logged_for (YYYY-MM-DD), note? }
+Body: { goal_id, value, logged_for (YYYY-MM-DD), note?, logged_unit?, logged_value? }
 → 201 ProgressEntry
 
 PUT /api/progress/:id
-Body: { value?, logged_for?, note? }
+Body: { value?, logged_for?, note?, logged_unit?, logged_value? }
 → ProgressEntry
 
 DELETE /api/progress/:id
@@ -192,7 +194,7 @@ GET /api/history/:period_key?user_id=<uuid>
       "percentage": 25,
       "on_track": null,
       "recent_entries": [
-        { "id": "uuid", "value": 1, "logged_for": "2026-04-02", "note": null }
+        { "id": "uuid", "value": 1, "logged_for": "2026-04-02", "note": null, "logged_unit": null, "logged_value": null }
       ]
     }
   ]

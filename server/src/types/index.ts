@@ -49,6 +49,8 @@ export interface ProgressEntry {
   value: number;
   logged_for: Date;
   note: string | null;
+  logged_unit: string | null;
+  logged_value: number | null;
   created_at: Date;
   updated_at: Date;
 }

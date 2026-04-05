@@ -10,12 +10,16 @@ const createProgressSchema = z.object({
   value: z.number(),
   logged_for: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'logged_for must be YYYY-MM-DD'),
   note: z.string().max(500).optional(),
+  logged_unit: z.string().max(50).optional(),
+  logged_value: z.number().optional(),
 });
 
 const updateProgressSchema = z.object({
   value: z.number().optional(),
   logged_for: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   note: z.string().max(500).nullable().optional(),
+  logged_unit: z.string().max(50).nullable().optional(),
+  logged_value: z.number().nullable().optional(),
 });
 
 // GET /api/progress?goal_id=
@@ -29,7 +33,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const result = await pool.query(
       `SELECT id, goal_id, value,
               TO_CHAR(logged_for, 'YYYY-MM-DD') AS logged_for,
-              note, created_at, updated_at
+              note, logged_unit, logged_value, created_at, updated_at
        FROM progress_entries WHERE goal_id = $1 ORDER BY logged_for DESC, created_at DESC`,
       [goal_id],
     );
@@ -45,12 +49,12 @@ router.post(
   validate(createProgressSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { goal_id, value, logged_for, note } = req.body as z.infer<typeof createProgressSchema>;
+      const { goal_id, value, logged_for, note, logged_unit, logged_value } = req.body as z.infer<typeof createProgressSchema>;
       const result = await pool.query(
-        `INSERT INTO progress_entries (goal_id, value, logged_for, note)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO progress_entries (goal_id, value, logged_for, note, logged_unit, logged_value)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [goal_id, value, logged_for, note ?? null],
+        [goal_id, value, logged_for, note ?? null, logged_unit ?? null, logged_value ?? null],
       );
       res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -83,6 +87,14 @@ router.put(
       if (fields.note !== undefined) {
         setClauses.push(`note = $${paramIdx++}`);
         values.push(fields.note);
+      }
+      if (fields.logged_unit !== undefined) {
+        setClauses.push(`logged_unit = $${paramIdx++}`);
+        values.push(fields.logged_unit);
+      }
+      if (fields.logged_value !== undefined) {
+        setClauses.push(`logged_value = $${paramIdx++}`);
+        values.push(fields.logged_value);
       }
 
       if (setClauses.length === 0) {

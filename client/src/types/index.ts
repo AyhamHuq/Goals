@@ -43,6 +43,8 @@ export interface ProgressEntry {
   value: number;
   logged_for: string;
   note: string | null;
+  logged_unit: string | null;
+  logged_value: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,7 +65,7 @@ export interface GoalWithProgress {
   expected_value: number | null;
   percentage: number;
   on_track: boolean | null;
-  recent_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note'>[];
+  recent_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
 }
 
 export interface PersonalDashboardResponse {

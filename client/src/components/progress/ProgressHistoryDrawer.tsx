@@ -203,7 +203,10 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                               {formatLoggedFor(entry.logged_for)}
                             </Typography>
                             <Typography variant="body2" color="text.primary" fontWeight={600}>
-                              {entry.value} {goal.unit}
+                              {entry.logged_unit && entry.logged_unit !== goal.unit && entry.logged_value !== null
+                                ? `${entry.logged_value} ${entry.logged_unit} (${entry.value} ${goal.unit})`
+                                : `${entry.value} ${goal.unit}`
+                              }
                             </Typography>
                           </Box>
                           {entry.note && (

@@ -1,4 +1,5 @@
 import { GoalWithProgress } from '../types';
+import { UNIT_CONVERSIONS } from '../constants/unitConversions';
 
 export function getFrequencyLabel(
   frequencyType: string,
@@ -53,6 +54,39 @@ function scaleMinutesToHours(
   return { value, unit };
 }
 
+/**
+ * Auto-scale a value to a more readable unit using the category's unit conversion map.
+ * Picks the largest unit where the converted value is >= 1.
+ * Falls back to scaleMinutesToHours for unknown categories.
+ */
+function scaleForDisplay(
+  value: number,
+  unit: string,
+  categoryName: string | null | undefined,
+): { value: number; unit: string } {
+  if (!categoryName) return scaleMinutesToHours(value, unit);
+  const map = UNIT_CONVERSIONS[categoryName];
+  if (!map) return scaleMinutesToHours(value, unit);
+
+  const currentFactor = map.toBase[unit];
+  if (!currentFactor) return { value, unit };
+
+  const valueInBase = value * currentFactor;
+  // Sort units ascending by their toBase factor (smaller units first)
+  const sortedBySize = map.units
+    .filter((u) => map.toBase[u] !== undefined)
+    .sort((a, b) => map.toBase[a] - map.toBase[b]);
+
+  let best = { value, unit };
+  for (const candidate of sortedBySize) {
+    const candidateValue = valueInBase / map.toBase[candidate];
+    if (candidateValue >= 1) {
+      best = { value: Math.round(candidateValue * 10) / 10, unit: candidate };
+    }
+  }
+  return best;
+}
+
 /** Format a display number: integer when whole, 1 decimal otherwise. */
 export function fmtValue(n: number): string {
   if (n === Math.floor(n)) return String(n);
@@ -90,7 +124,7 @@ export function getMonthlyDisplay(goal: GoalWithProgress): MonthlyDisplay {
   }
 
   const rawMonthly = getMonthlyTotal(goal.frequency_type, goal.target_value);
-  const { value: monthlyTarget, unit } = scaleMinutesToHours(rawMonthly, goal.unit);
+  const { value: monthlyTarget, unit } = scaleForDisplay(rawMonthly, goal.unit, goal.category?.name);
 
   // If unit changed (minutes → hours), scale current and expected by the same factor
   const scale = monthlyTarget / rawMonthly;

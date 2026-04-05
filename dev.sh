@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # dev.sh — Local development setup for Family Goal Tracker
+# All local dev uses the goals_sandbox database so your real data is never touched.
+#
 # Usage:
 #   ./dev.sh          — start everything (DB + both dev servers)
 #   ./dev.sh stop     — stop the database container
-#   ./dev.sh reset    — drop DB volume, re-migrate, re-seed, restart
+#   ./dev.sh reset    — wipe sandbox DB volume, re-migrate, re-seed, restart
 #   ./dev.sh logs     — tail all docker compose logs
+#   ./dev.sh seed     — run seed script only
+#   ./dev.sh migrate  — run migrations only
 
 set -euo pipefail
 
@@ -12,24 +16,29 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-log()    { echo -e "${BLUE}[goals]${NC} $*"; }
-ok()     { echo -e "${GREEN}[goals]${NC} $*"; }
-warn()   { echo -e "${YELLOW}[goals]${NC} $*"; }
-error()  { echo -e "${RED}[goals]${NC} $*"; exit 1; }
+log()   { echo -e "${BLUE}[goals]${NC} $*"; }
+ok()    { echo -e "${GREEN}[goals]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[goals]${NC} $*"; }
+error() { echo -e "${RED}[goals]${NC} $*"; exit 1; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$ROOT"  # ensure CWD is always valid (prevents npm uv_cwd errors in WSL)
-COMPOSE_FILES=(-f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.dev.yml")
+cd "$ROOT"
+
+COMPOSE_FILES=(
+  -f "$ROOT/docker-compose.yml"
+  -f "$ROOT/docker-compose.dev.yml"
+  -f "$ROOT/docker-compose.sandbox.yml"
+)
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 
 check_deps() {
   local missing=()
-  command -v docker   >/dev/null 2>&1 || missing+=("docker")
-  command -v node     >/dev/null 2>&1 || missing+=("node (20+)")
-  command -v npm      >/dev/null 2>&1 || missing+=("npm")
+  command -v docker >/dev/null 2>&1 || missing+=("docker")
+  command -v node   >/dev/null 2>&1 || missing+=("node (20+)")
+  command -v npm    >/dev/null 2>&1 || missing+=("npm")
   if [[ ${#missing[@]} -gt 0 ]]; then
     error "Missing required tools: ${missing[*]}"
   fi
@@ -49,8 +58,8 @@ setup_env() {
     cp "$ROOT/.env.example" "$ROOT/.env"
     ok "Created .env — edit it if you need custom settings"
   fi
-  # Export dev overrides (local DB, dev mode)
-  export DATABASE_URL="${DATABASE_URL:-postgres://goals:goals@localhost:5432/goals}"
+  export SANDBOX=true
+  export DATABASE_URL="postgres://goals:${DB_PASSWORD:-goals}@localhost:5432/goals_sandbox"
   export PORT="${PORT:-3001}"
   export NODE_ENV="${NODE_ENV:-development}"
 }
@@ -81,23 +90,20 @@ stop_db() {
 }
 
 reset_db() {
-  # Block resets in production
-  if [[ "${NODE_ENV:-development}" == "production" ]]; then
-    error "Cannot reset database in production. Unset NODE_ENV=production to proceed."
-  fi
   warn "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  warn "  DATABASE RESET — ALL DATA WILL BE LOST"
+  warn "  SANDBOX RESET — all sandbox data will be lost"
   warn "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   warn "  Type RESET (all caps) to confirm, anything else to abort:"
   read -r -p "Confirm: " confirm
   [[ "$confirm" == "RESET" ]] || { log "Aborted."; exit 0; }
   docker compose "${COMPOSE_FILES[@]}" down -v
   start_db
+  ensure_sandbox_db
   run_migrate
   run_seed
 }
 
-# ── Server dependencies ───────────────────────────────────────────────────────
+# ── Dependencies ──────────────────────────────────────────────────────────────
 
 install_deps() {
   if [[ ! -d "$ROOT/server/node_modules" ]]; then
@@ -123,14 +129,13 @@ run_migrate() {
 run_seed() {
   log "Seeding database..."
   npm --prefix "$ROOT/server" run seed
-  ok "Seed complete — 1 group, 6 users, 8 categories"
+  ok "Seed complete"
 }
 
 check_seeded() {
-  # Derive DB name from DATABASE_URL (last path segment), defaulting to 'goals'
   local dbname
   dbname=$(echo "${DATABASE_URL:-}" | sed 's|.*/||' | tr -d '[:space:]')
-  dbname="${dbname:-goals}"
+  dbname="${dbname:-goals_sandbox}"
   local count
   count=$(docker compose "${COMPOSE_FILES[@]}" exec -T db \
     psql -U goals -d "$dbname" -tAc "SELECT COUNT(*) FROM users" 2>/dev/null || echo "0")
@@ -143,12 +148,22 @@ check_seeded() {
   fi
 }
 
+# ── Sandbox DB ────────────────────────────────────────────────────────────────
+
+ensure_sandbox_db() {
+  log "Ensuring sandbox database exists..."
+  docker compose "${COMPOSE_FILES[@]}" exec -T db \
+    psql -U goals -d postgres -c "CREATE DATABASE goals_sandbox OWNER goals;" 2>/dev/null \
+    || true
+  ok "Sandbox DB ready"
+}
+
 # ── Dev servers ───────────────────────────────────────────────────────────────
 
 start_dev_servers() {
   ok ""
   ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  ok "  Family Goal Tracker — dev mode"
+  ok "  Family Goal Tracker — sandbox mode"
   ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   ok "  Frontend : http://localhost:5173"
   ok "  Backend  : http://localhost:3001"
@@ -157,31 +172,17 @@ start_dev_servers() {
   ok "  Press Ctrl+C to stop both servers"
   ok ""
 
-  # Start backend in background, capture its PID
   npm --prefix "$ROOT/server" run dev &
   SERVER_PID=$!
 
-  # Give the server a moment to bind before starting the client
   sleep 2
 
-  # Start frontend (blocks until Ctrl+C)
   npm --prefix "$ROOT/client" run dev &
   CLIENT_PID=$!
 
-  # Trap Ctrl+C to clean up both processes
   trap 'log "Shutting down..."; kill $SERVER_PID $CLIENT_PID 2>/dev/null; wait; ok "Done"' INT TERM
 
   wait $SERVER_PID $CLIENT_PID
-}
-
-# ── Sandbox DB ────────────────────────────────────────────────────────────────
-
-ensure_sandbox_db() {
-  log "Ensuring sandbox database exists..."
-  docker compose "${COMPOSE_FILES[@]}" exec -T db \
-    psql -U goals -d postgres -c "CREATE DATABASE goals_sandbox OWNER goals;" 2>/dev/null \
-    || true  # already exists — that's fine
-  ok "Sandbox DB ready"
 }
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
@@ -194,6 +195,7 @@ case "$cmd" in
     setup_env
     install_deps
     start_db
+    ensure_sandbox_db
     run_migrate
     check_seeded
     start_dev_servers
@@ -208,24 +210,6 @@ case "$cmd" in
     reset_db
     start_dev_servers
     ;;
-  sandbox)
-    check_deps
-    setup_env
-    export SANDBOX=true
-    export DATABASE_URL="postgres://goals:${DB_PASSWORD:-goals}@localhost:5432/goals_sandbox"
-    COMPOSE_FILES=(-f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.dev.yml" -f "$ROOT/docker-compose.sandbox.yml")
-    install_deps
-    start_db
-    ensure_sandbox_db
-    run_migrate
-    check_seeded
-    ok ""
-    ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    warn "  SANDBOX MODE — data saves to goals_sandbox"
-    warn "  Real database is untouched"
-    ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    start_dev_servers
-    ;;
   logs)
     docker compose "${COMPOSE_FILES[@]}" logs -f
     ;;
@@ -238,12 +222,11 @@ case "$cmd" in
     run_migrate
     ;;
   *)
-    echo "Usage: $0 [start|sandbox|stop|reset|logs|seed|migrate]"
+    echo "Usage: $0 [start|stop|reset|logs|seed|migrate]"
     echo ""
     echo "  start    Start DB + run migrations + launch dev servers (default)"
-    echo "  sandbox  Start in sandbox mode (uses goals_sandbox DB, real DB untouched)"
     echo "  stop     Stop the database container"
-    echo "  reset    Wipe DB, re-migrate, re-seed, restart dev servers"
+    echo "  reset    Wipe sandbox DB, re-migrate, re-seed, restart dev servers"
     echo "  logs     Tail docker compose logs"
     echo "  seed     Run seed script only"
     echo "  migrate  Run migrations only"

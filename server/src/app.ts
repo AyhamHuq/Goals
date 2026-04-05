@@ -8,6 +8,7 @@ import goalsRouter from './routes/goals';
 import progressRouter from './routes/progress';
 import dashboardRouter from './routes/dashboard';
 import historyRouter from './routes/history';
+import sandboxRouter from './routes/sandbox';
 
 export const app = express();
 
@@ -24,5 +25,6 @@ app.use('/api/goals', goalsRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/sandbox', sandboxRouter);
 
 app.use(errorHandler);

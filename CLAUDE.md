@@ -4,6 +4,19 @@
 
 Family Goal Tracker — React + Express + PostgreSQL + MUI, deployed via Docker Compose on Hetzner CX23. See PLAN.md for implementation phases and ARCHITECTURE.md for schema, API shapes, and frequency math.
 
+## GitHub Bot Identity
+
+All GitHub operations (push, PR creation, PR review) must use the `goals-claude-bot` GitHub App token so that AyhamHuq can review and merge Claude's PRs.
+
+- **Get a token**: `node scripts/github-app-token.mjs` (reads the `.pem` from repo root, App ID 3283225)
+- **`gh` commands**: prefix with `GITHUB_TOKEN=$(node scripts/github-app-token.mjs)`, e.g.:
+  ```
+  GITHUB_TOKEN=$(node scripts/github-app-token.mjs) gh pr create ...
+  GITHUB_TOKEN=$(node scripts/github-app-token.mjs) gh pr review ...
+  ```
+- **`git push`**: the local credential helper is already configured — just run `git push` normally and it will authenticate as the bot
+- **Commit identity**: local git config is set to `goals-claude-bot[bot]` — no action needed
+
 ## Development Practices
 
 - **TDD**: Write tests first, then implement to make them pass.

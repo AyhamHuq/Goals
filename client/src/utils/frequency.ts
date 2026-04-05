@@ -56,7 +56,6 @@ function scaleMinutesToHours(
 /** Format a display number: integer when whole, 1 decimal otherwise. */
 export function fmtValue(n: number): string {
   if (n === Math.floor(n)) return String(n);
-  if (Math.abs(n) >= 10) return n.toFixed(0);
   return n.toFixed(1);
 }
 

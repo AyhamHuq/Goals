@@ -44,7 +44,15 @@ export function calcProgress(
 
   if (frequencyType === 'total') {
     const percentage = targetValue === 0 ? 0 : (currentValue / targetValue) * 100;
-    return { percentage, expectedValue: null, onTrack: null };
+    const monthStart = parseISO(`${periodKey}-01`);
+    const daysInMonth = getDaysInMonth(monthStart);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+    const ref = referenceDate ?? new Date();
+    const clampedRef = ref < monthStart ? monthStart : ref > monthEnd ? monthEnd : ref;
+    const daysElapsed = differenceInDays(clampedRef, monthStart) + 1;
+    const expectedValue = targetValue * (daysElapsed / daysInMonth);
+    const onTrack = currentValue >= expectedValue;
+    return { percentage, expectedValue: Math.round(expectedValue * 100) / 100, onTrack };
   }
 
   // Parse period to get month start

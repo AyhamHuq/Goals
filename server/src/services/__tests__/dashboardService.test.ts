@@ -50,7 +50,9 @@ describe('getPersonalDashboard', () => {
     const goal = result.goals[0];
     expect(goal.current_value).toBe(1);
     expect(goal.percentage).toBeCloseTo(25);
-    expect(goal.on_track).toBeNull(); // total frequency
+    // 'total' goals now have linear pacing: expected = 4 * (10/30) ≈ 1.33; current=1 → behind
+    expect(goal.on_track).toBe(false);
+    expect(goal.expected_value).toBeCloseTo(1.33, 1);
     expect(goal.recent_entries).toHaveLength(1);
   });
 

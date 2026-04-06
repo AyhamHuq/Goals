@@ -3,11 +3,14 @@ import { calcProgress } from '../frequencyCalc';
 const PERIOD = '2026-04'; // April 2026 — 30 days
 
 describe('calcProgress — total', () => {
-  it('returns percentage and null pacing fields', () => {
-    const result = calcProgress('total', 2, 8, PERIOD);
+  it('returns percentage with linear pacing fields', () => {
+    // April 5: daysElapsed=5, daysInMonth=30, target=8
+    // expectedValue = 8 * (5/30) ≈ 1.33
+    const ref = new Date(2026, 3, 5);
+    const result = calcProgress('total', 2, 8, PERIOD, ref);
     expect(result.percentage).toBeCloseTo(25);
-    expect(result.expectedValue).toBeNull();
-    expect(result.onTrack).toBeNull();
+    expect(result.expectedValue).toBeCloseTo(8 * (5 / 30), 2);
+    expect(result.onTrack).toBe(true); // 2 >= 1.33
   });
 
   it('handles zero target gracefully', () => {
@@ -16,8 +19,39 @@ describe('calcProgress — total', () => {
   });
 
   it('returns > 100% when current exceeds target', () => {
-    const result = calcProgress('total', 10, 4, PERIOD);
+    const ref = new Date(2026, 3, 10);
+    const result = calcProgress('total', 10, 4, PERIOD, ref);
     expect(result.percentage).toBeCloseTo(250);
+  });
+
+  it('on-track total goal: current >= expected', () => {
+    // April 10: expected = 20 * (10/30) ≈ 6.67, current = 8 → on track
+    const ref = new Date(2026, 3, 10);
+    const result = calcProgress('total', 8, 20, PERIOD, ref);
+    expect(result.expectedValue).toBeCloseTo(20 * (10 / 30), 2);
+    expect(result.onTrack).toBe(true);
+  });
+
+  it('behind-pace total goal: current < expected', () => {
+    // April 20: expected = 20 * (20/30) ≈ 13.33, current = 5 → behind
+    const ref = new Date(2026, 3, 20);
+    const result = calcProgress('total', 5, 20, PERIOD, ref);
+    expect(result.expectedValue).toBeCloseTo(20 * (20 / 30), 2);
+    expect(result.onTrack).toBe(false);
+  });
+
+  it('first day of month: expected = target * (1/30)', () => {
+    const ref = new Date(2026, 3, 1);
+    const result = calcProgress('total', 0, 30, PERIOD, ref);
+    expect(result.expectedValue).toBeCloseTo(30 * (1 / 30), 2); // 1
+    expect(result.onTrack).toBe(false); // 0 < 1
+  });
+
+  it('last day of month: expected = full target', () => {
+    const ref = new Date(2026, 3, 30);
+    const result = calcProgress('total', 30, 30, PERIOD, ref);
+    expect(result.expectedValue).toBeCloseTo(30);
+    expect(result.onTrack).toBe(true);
   });
 });
 
@@ -156,10 +190,12 @@ describe('calcProgress — measurement', () => {
   });
 
   it('does not affect accumulation goals when goalType omitted', () => {
-    // regression: existing call signature unchanged
-    const result = calcProgress('total', 2, 8, PERIOD);
+    // regression: accumulation goals now get linear pacing (not null)
+    const ref = new Date(2026, 3, 15);
+    const result = calcProgress('total', 2, 8, PERIOD, ref);
     expect(result.percentage).toBeCloseTo(25);
-    expect(result.expectedValue).toBeNull();
-    expect(result.onTrack).toBeNull();
+    // expectedValue = 8 * (15/30) = 4
+    expect(result.expectedValue).toBeCloseTo(4, 2);
+    expect(result.onTrack).toBe(false); // 2 < 4
   });
 });

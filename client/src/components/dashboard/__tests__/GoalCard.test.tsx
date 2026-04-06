@@ -13,10 +13,21 @@ vi.mock('../../../hooks/useProgress', () => ({
   useDeleteProgress: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
+// Mock goal hooks so drawer's delete goal button doesn't make real network calls
+vi.mock('../../../hooks/useGoals', () => ({
+  useDeleteGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 // Mock ProgressLogDialog (opened by QuickLogButton) — not the focus of these tests
 vi.mock('../../progress/ProgressLogDialog', () => ({
   default: ({ open }: { open: boolean }) =>
     open ? <div data-testid="progress-log-dialog" /> : null,
+}));
+
+// Mock GoalFormDialog (opened by edit goal button in drawer) — requires UserContext provider
+vi.mock('../../goals/GoalFormDialog', () => ({
+  default: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="goal-form-dialog" /> : null,
 }));
 
 function makeGoal(overrides: Partial<GoalWithProgress & { id: string }> = {}): GoalWithProgress & {
@@ -24,6 +35,9 @@ function makeGoal(overrides: Partial<GoalWithProgress & { id: string }> = {}): G
 } {
   return {
     id: 'goal-1',
+    user_id: 'user-1',
+    category_id: null,
+    period_key: '2026-04',
     title: 'Read more books',
     category: null,
     target_value: 4,

@@ -26,10 +26,11 @@ export async function seedDatabase(): Promise<void> {
     }
 
     const categories = [
-      { name: 'Weight Loss',     icon: '⚖️',  order: 0 },
-      { name: 'Arabic Learning', icon: '📖',  order: 1 },
-      { name: 'Fitness',         icon: '🏋️',  order: 2 },
-      { name: 'Quran',           icon: '🕌',  order: 3 },
+      { name: 'Weight Loss',          icon: '⚖️',  order: 0 },
+      { name: 'Arabic Learning',     icon: '📖',  order: 1 },
+      { name: 'Fitness',             icon: '🏋️',  order: 2 },
+      { name: 'Quran',               icon: '🕌',  order: 3 },
+      { name: 'Professional Learning', icon: '💼', order: 4 },
     ];
 
     for (const cat of categories) {

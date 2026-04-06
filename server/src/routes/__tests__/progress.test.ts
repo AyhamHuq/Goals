@@ -20,6 +20,8 @@ const sampleEntry = {
   value: '5.00',
   logged_for: '2026-04-03',
   note: null,
+  logged_unit: null,
+  logged_value: null,
 };
 
 describe('GET /api/progress', () => {
@@ -77,6 +79,28 @@ describe('POST /api/progress', () => {
       .post('/api/progress')
       .send({ goal_id: VALID_UUID, value: 5, logged_for: 'not-a-date' });
     expect(res.status).toBe(400);
+  });
+
+  it('creates entry with logged_unit and logged_value for multi-unit logging', async () => {
+    const withLoggedUnit = {
+      ...sampleEntry,
+      value: '120.00',
+      logged_unit: 'minutes',
+      logged_value: '2.00',
+    };
+    mockQuery.mockResolvedValueOnce({ rows: [withLoggedUnit] });
+    const res = await request(app)
+      .post('/api/progress')
+      .send({
+        goal_id: VALID_UUID,
+        value: 120,
+        logged_for: '2026-04-03',
+        logged_unit: 'minutes',
+        logged_value: 2,
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.logged_unit).toBe('minutes');
+    expect(res.body.logged_value).toBe('2.00');
   });
 });
 

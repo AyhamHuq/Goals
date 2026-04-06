@@ -56,7 +56,7 @@ const defaultForm: FormState = {
 };
 
 const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
-  { value: 'total',  label: 'Monthly total',  description: 'A fixed total for the whole month — no daily/weekly pacing (e.g. 20 lectures total)' },
+  { value: 'total',  label: 'Monthly total',  description: 'A fixed total for the whole month — paced linearly day by day (e.g. 20 lectures total)' },
   { value: 'daily',  label: 'Daily target',   description: 'Amount per day — paces against days elapsed (e.g. 1 lecture/day ≈ 30 total in April)' },
   { value: 'weekly', label: 'Weekly target',  description: 'Amount per week — paces against weeks elapsed (e.g. 3 lectures/week ≈ 15 total in April)' },
 ];

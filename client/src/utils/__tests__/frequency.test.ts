@@ -70,9 +70,10 @@ describe('fmtValue', () => {
     expect(fmtValue(2.3)).toBe('2.3');
   });
 
-  it('rounds to integer for values >= 10 with decimals', () => {
-    expect(fmtValue(10.7)).toBe('11');
-    expect(fmtValue(15.4)).toBe('15');
+  it('returns one decimal for values >= 10 with decimals', () => {
+    expect(fmtValue(10.7)).toBe('10.7');
+    expect(fmtValue(15.4)).toBe('15.4');
+    expect(fmtValue(185.5)).toBe('185.5');
   });
 
   it('handles negative values', () => {

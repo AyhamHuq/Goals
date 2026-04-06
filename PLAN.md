@@ -22,7 +22,7 @@ groups (id UUID PK, name, created_at)
 users (id UUID PK, group_id FK, display_name, avatar_color, phone, sort_order, last_active_at, created_at)
 categories (id UUID PK, group_id FK, name, icon, sort_order, UNIQUE(group_id, name))
 goals (id UUID PK, user_id FK, category_id FK, period_key CHAR(7), title, target_value NUMERIC, unit, frequency_type CHECK(total|daily|weekly), is_archived BOOL, created_at, updated_at)
-progress_entries (id UUID PK, goal_id FK CASCADE, value NUMERIC, logged_for DATE, note, created_at, updated_at)
+progress_entries (id UUID PK, goal_id FK CASCADE, value NUMERIC, logged_for DATE, note, logged_unit VARCHAR(50), logged_value NUMERIC, created_at, updated_at)
 ```
 
 Key decisions:
@@ -129,6 +129,7 @@ Goals/
 | 7 | Docker + Deployment config | ✅ Done |
 | 8 | Polish (loading/empty/error states, UI) | ✅ Done |
 | 9 | Sandbox mode (isolated goals_sandbox DB) | ✅ Done |
+| 10 | Unit system overhaul — multi-unit logging, conversion constants, Professional Learning category | ✅ Done |
 
 ## Verification
 

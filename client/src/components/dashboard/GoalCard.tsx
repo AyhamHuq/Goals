@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { GoalWithProgress } from '../../types';
 import { formatPercentage, getMonthlyDisplay, getMonthlyLabel, fmtValue } from '../../utils/frequency';
+import { getUnitsForCategory, convertUnit } from '../../constants/unitConversions';
 import QuickLogButton from '../progress/QuickLogButton';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
 
@@ -42,6 +43,14 @@ const colorHexMap: Record<PacingColor, string> = {
 
 export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [displayUnit, setDisplayUnit] = useState(goal.unit);
+  const unitOptions = goal.category ? getUnitsForCategory(goal.category.name) : [];
+
+  // Reset displayUnit when the goal's unit changes
+  useEffect(() => {
+    setDisplayUnit(goal.unit);
+  }, [goal.unit]);
+
   const color = getProgressColor(goal);
   const hex = colorHexMap[color];
   const barValue = Math.min(goal.percentage, 100);
@@ -53,6 +62,30 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
 
   const monthly = getMonthlyDisplay(goal);
   const approx = monthly.isApprox ? '~' : '';
+
+  // Apply display unit conversion if user has toggled to a different unit
+  const categoryName = goal.category?.name ?? '';
+  const displayMonthly = displayUnit !== monthly.unit
+    ? {
+        ...monthly,
+        current: convertUnit(monthly.current, monthly.unit, displayUnit, categoryName),
+        monthlyTarget: convertUnit(monthly.monthlyTarget, monthly.unit, displayUnit, categoryName),
+        expected: monthly.expected !== null
+          ? convertUnit(monthly.expected, monthly.unit, displayUnit, categoryName)
+          : null,
+        unit: displayUnit,
+      }
+    : monthly;
+
+  const displayCurrentValue = goal.goal_type === 'measurement' && displayUnit !== goal.unit
+    ? convertUnit(goal.current_value, goal.unit, displayUnit, categoryName)
+    : goal.current_value;
+  const displayTargetValue = goal.goal_type === 'measurement' && displayUnit !== goal.unit
+    ? convertUnit(goal.target_value, goal.unit, displayUnit, categoryName)
+    : goal.target_value;
+  const displayExpected = goal.goal_type === 'measurement' && monthly.expected !== null && displayUnit !== goal.unit
+    ? convertUnit(monthly.expected, goal.unit, displayUnit, categoryName)
+    : monthly.expected;
 
   return (
     <>
@@ -111,11 +144,11 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" color="text.secondary">
               {goal.goal_type === 'measurement'
-                ? `${fmtValue(goal.current_value)} ${goal.unit} → ${goal.target_value} ${goal.unit}${
-                    monthly.expected !== null ? ` · ${fmtValue(monthly.expected)} expected` : ''
+                ? `${fmtValue(displayCurrentValue)} ${displayUnit} → ${fmtValue(displayTargetValue)} ${displayUnit}${
+                    displayExpected !== null ? ` · ${fmtValue(displayExpected)} expected` : ''
                   }`
-                : `${fmtValue(monthly.current)} / ${approx}${fmtValue(monthly.monthlyTarget)} ${monthly.unit}${
-                    monthly.expected !== null ? ` · ${fmtValue(monthly.expected)} expected` : ''
+                : `${fmtValue(displayMonthly.current)} / ${approx}${fmtValue(displayMonthly.monthlyTarget)} ${displayMonthly.unit}${
+                    displayMonthly.expected !== null ? ` · ${fmtValue(displayMonthly.expected)} expected` : ''
                   }`
               }
             </Typography>
@@ -140,6 +173,22 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
               </Box>
             )}
           </Box>
+
+          {unitOptions.length > 1 && (
+            <Box display="flex" justifyContent="flex-end" mt={0.5}>
+              <Chip
+                label={displayUnit}
+                size="small"
+                variant="outlined"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const idx = unitOptions.indexOf(displayUnit);
+                  setDisplayUnit(unitOptions[(idx + 1) % unitOptions.length]);
+                }}
+                sx={{ fontSize: '0.65rem', height: 18, cursor: 'pointer' }}
+              />
+            </Box>
+          )}
 
           {!readOnly && (
             <Box onClick={(e) => e.stopPropagation()} mt={0.5}>

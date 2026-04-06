@@ -6,6 +6,8 @@ export interface CreateProgressInput {
   value: number;
   logged_for: string;
   note?: string;
+  logged_unit?: string;
+  logged_value?: number;
 }
 
 export async function getProgress(goalId: string): Promise<ProgressEntry[]> {

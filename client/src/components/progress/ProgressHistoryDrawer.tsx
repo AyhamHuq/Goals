@@ -23,9 +23,11 @@ import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { GoalWithProgress, ProgressEntry } from '../../types';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
+import { useDeleteGoal } from '../../hooks/useGoals';
 import { useToast } from '../Toast';
 import { formatLoggedFor } from '../../utils/dates';
 import { getMonthlyLabel } from '../../utils/frequency';
+import GoalFormDialog from '../goals/GoalFormDialog';
 
 interface ProgressHistoryDrawerProps {
   open: boolean;
@@ -79,9 +81,12 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);
   const updateProgress = useUpdateProgress();
   const deleteProgress = useDeleteProgress();
+  const deleteGoal = useDeleteGoal();
   const { showToast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editGoalOpen, setEditGoalOpen] = useState(false);
+  const [deleteGoalConfirm, setDeleteGoalConfirm] = useState(false);
 
   const handleSave = async (id: string, value: number, note: string) => {
     if (isNaN(value) || value <= 0) return;
@@ -149,6 +154,16 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                 </Typography>
               )}
             </Box>
+            {!readOnly && (
+              <>
+                <IconButton size="small" onClick={() => setEditGoalOpen(true)} aria-label="Edit goal">
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton size="small" color="error" onClick={() => setDeleteGoalConfirm(true)} aria-label="Delete goal">
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </>
+            )}
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
@@ -188,7 +203,10 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                               {formatLoggedFor(entry.logged_for)}
                             </Typography>
                             <Typography variant="body2" color="text.primary" fontWeight={600}>
-                              {entry.value} {goal.unit}
+                              {entry.logged_unit && entry.logged_unit !== goal.unit && entry.logged_value !== null
+                                ? `${entry.logged_value} ${entry.logged_unit} (${entry.value} ${goal.unit})`
+                                : `${entry.value} ${goal.unit}`
+                              }
                             </Typography>
                           </Box>
                           {entry.note && (
@@ -228,7 +246,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         </Box>
       </Drawer>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete entry confirmation dialog */}
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} maxWidth="xs">
         <DialogTitle>Delete entry?</DialogTitle>
         <DialogContent>
@@ -248,6 +266,63 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit goal dialog */}
+      {!readOnly && (
+        <GoalFormDialog
+          open={editGoalOpen}
+          onClose={() => setEditGoalOpen(false)}
+          goal={{
+            id: goal.id,
+            user_id: goal.user_id,
+            category_id: goal.category_id,
+            period_key: goal.period_key,
+            title: goal.title,
+            target_value: goal.target_value,
+            unit: goal.unit,
+            frequency_type: goal.frequency_type,
+            goal_type: goal.goal_type,
+            start_value: goal.start_value,
+            is_archived: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }}
+          userId={goal.user_id}
+          periodKey={goal.period_key}
+        />
+      )}
+
+      {/* Delete goal confirmation dialog */}
+      {!readOnly && (
+        <Dialog open={deleteGoalConfirm} onClose={() => setDeleteGoalConfirm(false)} maxWidth="xs">
+          <DialogTitle>Delete goal?</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              This goal and all its progress entries will be permanently deleted. This cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteGoalConfirm(false)}>Cancel</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await deleteGoal.mutateAsync(goal.id);
+                  showToast({ message: 'Goal deleted.', severity: 'info' });
+                  setDeleteGoalConfirm(false);
+                  onClose();
+                } catch {
+                  showToast({ message: 'Failed to delete goal.', severity: 'error' });
+                }
+              }}
+              disabled={deleteGoal.isPending}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </>
   );
 }

@@ -8,10 +8,15 @@ interface RecentEntry {
   value: number;
   logged_for: string;
   note: string | null;
+  logged_unit: string | null;
+  logged_value: number | null;
 }
 
 interface GoalWithProgress {
   id: string;
+  user_id: string;
+  category_id: string | null;
+  period_key: string;
   title: string;
   category: { id: string; name: string } | null;
   target_value: number;
@@ -95,7 +100,7 @@ export async function getPersonalDashboard(
 
     // Get recent 5 entries
     const recentResult = await pool.query(
-      `SELECT id, value, logged_for, note FROM progress_entries
+      `SELECT id, value, logged_for, note, logged_unit, logged_value FROM progress_entries
        WHERE goal_id = $1
        ORDER BY logged_for DESC, created_at DESC
        LIMIT 5`,
@@ -115,6 +120,9 @@ export async function getPersonalDashboard(
 
     goals.push({
       id: row.id,
+      user_id: row.user_id,
+      category_id: row.category_id ?? null,
+      period_key: periodKey,
       title: row.title,
       category: row.cat_id ? { id: row.cat_id, name: row.cat_name } : null,
       target_value: parseFloat(row.target_value),
@@ -193,6 +201,9 @@ export async function getGroupDashboard(
       );
       return {
         id: row.id,
+        user_id: row.user_id,
+        category_id: row.category_id ?? null,
+        period_key: periodKey,
         title: row.title,
         category: row.cat_id ? { id: row.cat_id, name: row.cat_name } : null,
         target_value: targetValue,

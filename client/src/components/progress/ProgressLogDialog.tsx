@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,6 +13,7 @@ import {
   Typography,
   CircularProgress,
   Box,
+  MenuItem,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
@@ -20,6 +21,7 @@ import { format } from 'date-fns';
 import { GoalWithProgress } from '../../types';
 import { useCreateProgress } from '../../hooks/useProgress';
 import { useToast } from '../Toast';
+import { getUnitsForCategory, convertUnit } from '../../constants/unitConversions';
 
 interface ProgressLogDialogProps {
   open: boolean;
@@ -37,14 +39,29 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
   const [loggedFor, setLoggedFor] = useState<string>(today);
   const [note, setNote] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [logUnit, setLogUnit] = useState<string>(goal.unit);
+
+  const availableUnits = goal.category ? getUnitsForCategory(goal.category.name) : [];
 
   const createProgress = useCreateProgress();
+
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setValue('');
+      setLoggedFor(today);
+      setNote('');
+      setError('');
+      setLogUnit(goal.unit);
+    }
+  }, [open, goal.unit, today]);
 
   const handleClose = () => {
     setValue('');
     setLoggedFor(today);
     setNote('');
     setError('');
+    setLogUnit(goal.unit);
     onClose();
   };
 
@@ -55,12 +72,25 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
       return;
     }
     setError('');
+
+    let submittedValue = num;
+    let loggedUnitPayload: string | undefined;
+    let loggedValuePayload: number | undefined;
+
+    if (logUnit !== goal.unit) {
+      submittedValue = convertUnit(num, logUnit, goal.unit, goal.category?.name ?? '');
+      loggedUnitPayload = logUnit;
+      loggedValuePayload = num;
+    }
+
     try {
       await createProgress.mutateAsync({
         goal_id: goal.id,
-        value: num,
+        value: submittedValue,
         logged_for: loggedFor,
         note: note.trim() || undefined,
+        logged_unit: loggedUnitPayload,
+        logged_value: loggedValuePayload,
       });
       showToast({ message: goal.goal_type === 'measurement' ? 'Measurement logged!' : 'Progress logged! 🎉', severity: 'success' });
       handleClose();
@@ -87,23 +117,46 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
 
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-          {/* Large centered value input */}
+          {/* Large centered value input with optional unit selector */}
           <Box textAlign="center">
-            <TextField
-              label={goal.goal_type === 'measurement' ? `Current ${goal.unit}` : `Value (${goal.unit})`}
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              error={!!error}
-              helperText={error}
-              autoFocus
-              inputProps={{ min: 0, step: 'any', style: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 700 } }}
-              fullWidth
-              size="medium"
-            />
+            <Box display="flex" gap={1} alignItems="flex-start">
+              <TextField
+                label={goal.goal_type === 'measurement' ? `Current ${logUnit}` : `Value (${logUnit})`}
+                type="number"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                error={!!error}
+                helperText={error}
+                autoFocus
+                inputProps={{ min: 0, step: 'any', style: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 700 } }}
+                fullWidth
+                size="medium"
+              />
+              {availableUnits.length > 1 && (
+                <TextField
+                  select
+                  label="Unit"
+                  value={logUnit}
+                  onChange={(e) => setLogUnit(e.target.value)}
+                  size="medium"
+                  sx={{ minWidth: 110 }}
+                >
+                  {availableUnits.map((u) => (
+                    <MenuItem key={u} value={u}>
+                      {u}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            </Box>
             {goal.goal_type === 'measurement' && goal.start_value != null && (
               <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
                 Started at {goal.start_value} {goal.unit} · Goal: {goal.target_value} {goal.unit}
+              </Typography>
+            )}
+            {logUnit !== goal.unit && value && !isNaN(parseFloat(value)) && parseFloat(value) > 0 && (
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                = {convertUnit(parseFloat(value), logUnit, goal.unit, goal.category?.name ?? '').toFixed(2)} {goal.unit} (stored unit)
               </Typography>
             )}
           </Box>

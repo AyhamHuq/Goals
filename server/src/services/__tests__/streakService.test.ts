@@ -1,0 +1,105 @@
+import { getUserStreak } from '../streakService';
+
+jest.mock('../../db/pool', () => ({
+  pool: { query: jest.fn() },
+}));
+
+import { pool } from '../../db/pool';
+const mockQuery = pool.query as jest.Mock;
+
+beforeEach(() => {
+  mockQuery.mockReset();
+});
+
+const USER_ID = '123e4567-e89b-12d3-a456-426614174000';
+
+function makeDate(daysAgo: number, ref: Date = new Date()): string {
+  const d = new Date(ref);
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
+
+describe('getUserStreak', () => {
+  it('returns 0 when user has no progress entries', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    const result = await getUserStreak(USER_ID);
+    expect(result).toBe(0);
+  });
+
+  it('returns 1 when user only logged today', async () => {
+    const ref = new Date('2026-04-10');
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ logged_for: '2026-04-10' }],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(1);
+  });
+
+  it('returns N for N consecutive days ending today', async () => {
+    const ref = new Date('2026-04-10');
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { logged_for: '2026-04-10' },
+        { logged_for: '2026-04-09' },
+        { logged_for: '2026-04-08' },
+        { logged_for: '2026-04-07' },
+      ],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(4);
+  });
+
+  it('breaks streak when there is a gap', async () => {
+    const ref = new Date('2026-04-10');
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { logged_for: '2026-04-10' },
+        { logged_for: '2026-04-09' },
+        // gap: missing 2026-04-08
+        { logged_for: '2026-04-07' },
+        { logged_for: '2026-04-06' },
+      ],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(2);
+  });
+
+  it('still counts streak if user logged yesterday but not yet today (grace period)', async () => {
+    const ref = new Date('2026-04-10');
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { logged_for: '2026-04-09' },
+        { logged_for: '2026-04-08' },
+        { logged_for: '2026-04-07' },
+      ],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(3);
+  });
+
+  it('returns 0 if last entry was 2+ days ago', async () => {
+    const ref = new Date('2026-04-10');
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { logged_for: '2026-04-08' },
+        { logged_for: '2026-04-07' },
+      ],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(0);
+  });
+
+  it('counts entries across different goals (any goal logged counts)', async () => {
+    const ref = new Date('2026-04-10');
+    // Three consecutive days — entries could be from different goals
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { logged_for: '2026-04-10' },
+        { logged_for: '2026-04-09' },
+        { logged_for: '2026-04-08' },
+      ],
+    });
+    const result = await getUserStreak(USER_ID, ref);
+    expect(result).toBe(3);
+  });
+});

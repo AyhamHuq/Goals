@@ -40,11 +40,15 @@ describe('getPersonalDashboard', () => {
         rows: [{ id: 'pe-1', value: 1, logged_for: '2026-04-02', note: null }],
       });
 
+    // Query 4: streak (getUserStreak)
+    mockQuery.mockResolvedValueOnce({ rows: [{ logged_for: '2026-04-10' }, { logged_for: '2026-04-09' }] });
+
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
 
     expect(result.period_key).toBe(PERIOD);
     expect(result.days_in_month).toBe(30);
     expect(result.days_elapsed).toBe(10);
+    expect(result.streak).toBe(2);
     expect(result.goals).toHaveLength(1);
 
     const goal = result.goals[0];
@@ -72,7 +76,8 @@ describe('getPersonalDashboard', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [{ current_value: '10.00' }] })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }); // streak query
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -82,7 +87,9 @@ describe('getPersonalDashboard', () => {
   });
 
   it('returns empty goals array when no goals exist', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] }) // goals
+      .mockResolvedValueOnce({ rows: [] }); // streak query
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     expect(result.goals).toHaveLength(0);
   });
@@ -110,7 +117,9 @@ describe('getPersonalDashboard — measurement goal', () => {
       // Query 2: latest entry (measurement path)
       .mockResolvedValueOnce({ rows: [{ value: '82.50' }] })
       // Query 3: recent entries
-      .mockResolvedValueOnce({ rows: [{ id: 'pe-1', value: 82.5, logged_for: '2026-04-05', note: null }] });
+      .mockResolvedValueOnce({ rows: [{ id: 'pe-1', value: 82.5, logged_for: '2026-04-05', note: null }] })
+      // Query 4: streak
+      .mockResolvedValueOnce({ rows: [] });
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -139,7 +148,8 @@ describe('getPersonalDashboard — measurement goal', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] }) // no entries yet
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce({ rows: [] }) // recent entries
+      .mockResolvedValueOnce({ rows: [] }); // streak query
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -166,7 +176,8 @@ describe('getPersonalDashboard — measurement goal', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [{ value: '80.00' }] })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce({ rows: [] }) // recent entries
+      .mockResolvedValueOnce({ rows: [] }); // streak query
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     // REF_DATE = April 10 → expected = 90 + (75-90)*(10/30) = 85

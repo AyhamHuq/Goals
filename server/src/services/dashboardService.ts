@@ -1,6 +1,7 @@
 import { getDaysInMonth, parseISO, differenceInDays } from 'date-fns';
 import { pool } from '../db/pool';
 import { calcProgress } from './frequencyCalc';
+import { getUserStreak } from './streakService';
 import { FrequencyType, GoalType } from '../types';
 
 interface RecentEntry {
@@ -36,6 +37,7 @@ export interface PersonalDashboardResponse {
   days_in_month: number;
   days_elapsed: number;
   weeks_elapsed: number;
+  streak: number;
   goals: GoalWithProgress[];
 }
 
@@ -138,11 +140,14 @@ export async function getPersonalDashboard(
     });
   }
 
+  const streak = await getUserStreak(userId, ref);
+
   return {
     period_key: periodKey,
     days_in_month: daysInMonth,
     days_elapsed: daysElapsed,
     weeks_elapsed: weeksElapsed,
+    streak,
     goals,
   };
 }

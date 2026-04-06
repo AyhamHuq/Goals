@@ -1,9 +1,11 @@
 import 'dotenv/config';
+import cron from 'node-cron';
 import { app } from './app';
 import { config } from './config';
 import { runMigrations } from './db/migrate';
 import { pool } from './db/pool';
 import { seedDatabase } from './services/seedService';
+import { sendDailyReminders } from './services/reminderService';
 
 async function start() {
   await runMigrations();
@@ -14,6 +16,18 @@ async function start() {
     await seedDatabase();
     console.log('Database seeded.');
   }
+
+  // Run SMS reminder check every hour at :00
+  cron.schedule('0 * * * *', async () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    console.log(`[Cron] Running reminder check for hour ${currentHour}`);
+    try {
+      await sendDailyReminders(currentHour, now);
+    } catch (err) {
+      console.error('[Cron] Reminder job failed:', err);
+    }
+  });
 
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port} [${config.nodeEnv}]`);

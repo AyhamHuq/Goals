@@ -6,12 +6,16 @@ import {
   Chip,
   Skeleton,
   Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import FlagIcon from '@mui/icons-material/Flag';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PercentIcon from '@mui/icons-material/Percent';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { getHours } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { usePeriodContext } from '../../context/PeriodContext';
@@ -19,6 +23,7 @@ import { usePersonalDashboard } from '../../hooks/useDashboard';
 import { periodKeyToLabel } from '../../utils/dates';
 import GoalCard from './GoalCard';
 import GoalFormDialog from '../goals/GoalFormDialog';
+import NotificationSettings from '../NotificationSettings';
 
 function greeting(): string {
   const h = getHours(new Date());
@@ -55,10 +60,12 @@ export default function PersonalDashboard() {
   const { selectedUser } = useUserContext();
   const { periodKey, isCurrentPeriod } = usePeriodContext();
   const [addGoalOpen, setAddGoalOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const { data, isLoading, isError } = usePersonalDashboard(selectedUser?.id, periodKey);
 
   const goals = data?.goals ?? [];
+  const streak = data?.streak ?? 0;
   // For paced goals use on_track; for non-paced (total/measurement) use proportional time elapsed
   const proportionalThreshold = data
     ? (data.days_elapsed / data.days_in_month) * 100
@@ -98,17 +105,26 @@ export default function PersonalDashboard() {
             />
           )}
         </Box>
-        {isCurrentPeriod && (
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => setAddGoalOpen(true)}
-            sx={{ display: { xs: 'none', sm: 'flex' }, flexShrink: 0 }}
-          >
-            Add Goal
-          </Button>
-        )}
+        <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
+          {selectedUser && (
+            <Tooltip title="Notification settings">
+              <IconButton size="small" onClick={() => setNotifOpen(true)}>
+                <NotificationsNoneIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {isCurrentPeriod && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setAddGoalOpen(true)}
+              sx={{ display: { xs: 'none', sm: 'flex' } }}
+            >
+              Add Goal
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Stats bar */}
@@ -134,6 +150,15 @@ export default function PersonalDashboard() {
             size="small"
             color={avgPct >= 80 ? 'success' : avgPct >= 50 ? 'warning' : 'default'}
           />
+          {streak > 0 && (
+            <Chip
+              icon={<WhatshotIcon sx={{ fontSize: 15 }} />}
+              label={`${streak}-day streak`}
+              variant="outlined"
+              size="small"
+              color="warning"
+            />
+          )}
         </Box>
       )}
 
@@ -187,6 +212,14 @@ export default function PersonalDashboard() {
           onClose={() => setAddGoalOpen(false)}
           userId={selectedUser.id}
           periodKey={periodKey}
+        />
+      )}
+
+      {selectedUser && (
+        <NotificationSettings
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
+          user={selectedUser}
         />
       )}
     </Box>

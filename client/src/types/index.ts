@@ -10,6 +10,8 @@ export interface User {
   sort_order: number;
   last_active_at: string | null;
   created_at: string;
+  sms_reminders_enabled: boolean;
+  reminder_hour: number;
 }
 
 export interface Category {
@@ -73,6 +75,7 @@ export interface PersonalDashboardResponse {
   days_in_month: number;
   days_elapsed: number;
   weeks_elapsed: number;
+  streak: number;
   goals: GoalWithProgress[];
 }
 

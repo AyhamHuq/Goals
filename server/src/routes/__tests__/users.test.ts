@@ -50,3 +50,49 @@ describe('PATCH /api/users/:id/touch', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('PATCH /api/users/:id/preferences', () => {
+  it('updates sms_reminders_enabled and returns updated user', async () => {
+    const updated = { id: 'uuid-1', sms_reminders_enabled: true, reminder_hour: 20, phone: null };
+    mockQuery.mockResolvedValueOnce({ rows: [updated] });
+
+    const res = await request(app)
+      .patch('/api/users/uuid-1/preferences')
+      .send({ sms_reminders_enabled: true });
+    expect(res.status).toBe(200);
+    expect(res.body.sms_reminders_enabled).toBe(true);
+  });
+
+  it('updates phone number', async () => {
+    const updated = { id: 'uuid-1', phone: '+15551234567', sms_reminders_enabled: false, reminder_hour: 20 };
+    mockQuery.mockResolvedValueOnce({ rows: [updated] });
+
+    const res = await request(app)
+      .patch('/api/users/uuid-1/preferences')
+      .send({ phone: '+15551234567' });
+    expect(res.status).toBe(200);
+    expect(res.body.phone).toBe('+15551234567');
+  });
+
+  it('validates reminder_hour is 0-23', async () => {
+    const res = await request(app)
+      .patch('/api/users/uuid-1/preferences')
+      .send({ reminder_hour: 25 });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 when user not found', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .patch('/api/users/nonexistent/preferences')
+      .send({ sms_reminders_enabled: true });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when body is empty', async () => {
+    const res = await request(app)
+      .patch('/api/users/uuid-1/preferences')
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});

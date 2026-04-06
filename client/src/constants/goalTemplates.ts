@@ -64,7 +64,7 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
     description: 'Track professional development',
     goal_type: 'accumulation',
     unit: 'hours',
-    units: ['flashcards', 'minutes', 'hours'],
+    units: ['flashcards', 'minutes', 'hours', 'jobs'],
     frequency_type: 'daily',
     requiresStartValue: false,
   },

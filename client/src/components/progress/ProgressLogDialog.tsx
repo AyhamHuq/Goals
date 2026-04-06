@@ -17,11 +17,12 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
-import { format } from 'date-fns';
 import { GoalWithProgress } from '../../types';
 import { useCreateProgress } from '../../hooks/useProgress';
 import { useToast } from '../Toast';
 import { getUnitsForCategory, convertUnit } from '../../constants/unitConversions';
+import { usePeriodContext } from '../../context/PeriodContext';
+import { formatDayLabel } from '../../utils/dates';
 
 interface ProgressLogDialogProps {
   open: boolean;
@@ -33,10 +34,9 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const { selectedDay } = usePeriodContext();
 
   const [value, setValue] = useState<string>('');
-  const [loggedFor, setLoggedFor] = useState<string>(today);
   const [note, setNote] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [logUnit, setLogUnit] = useState<string>(goal.unit);
@@ -49,16 +49,14 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
   useEffect(() => {
     if (open) {
       setValue('');
-      setLoggedFor(today);
       setNote('');
       setError('');
       setLogUnit(goal.unit);
     }
-  }, [open, goal.unit, today]);
+  }, [open, goal.unit]);
 
   const handleClose = () => {
     setValue('');
-    setLoggedFor(today);
     setNote('');
     setError('');
     setLogUnit(goal.unit);
@@ -87,7 +85,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
       await createProgress.mutateAsync({
         goal_id: goal.id,
         value: submittedValue,
-        logged_for: loggedFor,
+        logged_for: selectedDay,
         note: note.trim() || undefined,
         logged_unit: loggedUnitPayload,
         logged_value: loggedValuePayload,
@@ -161,14 +159,9 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
             )}
           </Box>
 
-          <TextField
-            label="Date"
-            type="date"
-            value={loggedFor}
-            onChange={(e) => setLoggedFor(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
+          <Typography variant="caption" color="text.secondary">
+            Logging for: <strong>{formatDayLabel(selectedDay)}</strong>
+          </Typography>
 
           <TextField
             label="Note (optional)"

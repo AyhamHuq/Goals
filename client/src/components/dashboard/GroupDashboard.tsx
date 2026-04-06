@@ -525,11 +525,11 @@ function ByCategoryTab({
 
 export default function GroupDashboard() {
   const { selectedUser } = useUserContext();
-  const { periodKey } = usePeriodContext();
+  const { periodKey, selectedDay } = usePeriodContext();
   const groupId = selectedUser?.group_id;
   const [tab, setTab] = useState(0);
 
-  const { data, isLoading, isError } = useGroupDashboard(groupId, periodKey);
+  const { data, isLoading, isError } = useGroupDashboard(groupId, periodKey, selectedDay);
 
   if (isError) {
     return (

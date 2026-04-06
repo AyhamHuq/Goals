@@ -10,6 +10,8 @@ export interface User {
   sort_order: number;
   last_active_at: string | null;
   created_at: string;
+  sms_reminders_enabled: boolean;
+  reminder_hour: number;
 }
 
 export interface Category {
@@ -66,6 +68,7 @@ export interface GoalWithProgress {
   percentage: number;
   on_track: boolean | null;
   recent_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
+  day_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
 }
 
 export interface PersonalDashboardResponse {
@@ -73,6 +76,9 @@ export interface PersonalDashboardResponse {
   days_in_month: number;
   days_elapsed: number;
   weeks_elapsed: number;
+  streak: number;
+  day_completed: boolean;
+  selected_day: string;
   goals: GoalWithProgress[];
 }
 

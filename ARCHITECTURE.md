@@ -244,14 +244,62 @@ Edge cases handled:
 - `referenceDate` clamped to `[monthStart, monthEnd]` so past/future period queries are stable
 - `daysElapsed` minimum 1 (day 1 of month has 1 day elapsed)
 
-## SMS Service (Twilio Stub)
+## Streak Tracking
 
-`server/src/services/smsService.ts` exports `sendSms({ to, message })`.
+`server/src/services/streakService.ts` exports `getUserStreak(userId, referenceDate?)`.
 
-- When `TWILIO_ENABLED=false` (default): logs to console, returns immediately
-- When `TWILIO_ENABLED=true`: throws a not-implemented error (placeholder for V2 integration)
+Computed on-the-fly from `progress_entries` — no cached column needed. Uses a SQL query for distinct `logged_for` dates across all of the user's goals, then walks backward counting consecutive days.
 
-To activate in V2: uncomment the Twilio client code and install the `twilio` npm package.
+**Grace period:** if a user logged yesterday but not yet today, the streak is still alive. It only resets when the last logged day is 2+ days ago. The streak is included in the `PersonalDashboardResponse` as `streak: number` and displayed as a flame chip in the stats bar.
+
+## SMS / Reminder Service
+
+### SMS (`server/src/services/smsService.ts`)
+
+Exports `sendSms({ to, message }): Promise<SmsResult>`.
+
+- When `TWILIO_ENABLED=false` (default): logs to console, returns `{ sid: null }`
+- When `TWILIO_ENABLED=true`: sends via Twilio API, returns `{ sid: string }`
+
+### Daily Reminders (`server/src/services/reminderService.ts`)
+
+Exports `sendDailyReminders(currentHour, today)`. Runs via `node-cron` every hour at `:00` (server/src/index.ts). For each user with `sms_reminders_enabled=true`, `phone` set, and `reminder_hour` matching the current hour:
+1. Skips if they already logged progress today
+2. Skips if `notification_log` already has an entry for today (idempotent)
+3. Computes their streak, composes an encouraging message
+4. Sends SMS and records in `notification_log`
+
+### User Preferences API
+
+`PATCH /api/users/:id/preferences` — update `phone`, `sms_reminders_enabled`, `reminder_hour`.
+
+### Daily Completions Table
+
+```sql
+CREATE TABLE daily_completions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    completed_date  DATE NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, completed_date)
+);
+```
+
+Users mark a day as done via **`POST /api/daily-completions`**. This drives the streak — not raw progress entries. GET/DELETE endpoints support range queries and undo.
+
+### Notification Log Table
+
+```sql
+CREATE TABLE notification_log (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID NOT NULL REFERENCES users(id),
+    notification_type VARCHAR(20) NOT NULL,   -- 'sms_reminder'
+    sent_for          DATE NOT NULL,
+    sent_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    twilio_sid        VARCHAR(50),
+    UNIQUE(user_id, notification_type, sent_for)  -- prevents double-sends
+);
+```
 
 ## Deployment Architecture
 
@@ -320,10 +368,11 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 |----------|---------|-------------|
 | `DB_PASSWORD` | `goals` | PostgreSQL password |
 | `NODE_ENV` | `production` | Node environment (`production` / `staging`) |
-| `TWILIO_ENABLED` | `false` | Set `true` to enable real SMS in V2 |
-| `TWILIO_ACCOUNT_SID` | — | Twilio credentials (V2) |
-| `TWILIO_AUTH_TOKEN` | — | Twilio credentials (V2) |
-| `TWILIO_FROM_NUMBER` | — | Twilio sender number (V2) |
+| `TWILIO_ENABLED` | `false` | Set `true` to enable real SMS sending |
+| `TWILIO_ACCOUNT_SID` | — | Twilio Account SID |
+| `TWILIO_AUTH_TOKEN` | — | Twilio Auth Token |
+| `TWILIO_FROM_NUMBER` | — | Twilio sender number (E.164 format, e.g. +15550000000) |
+| `TZ` | `America/New_York` | Server timezone for reminder scheduling |
 
 `APP_PORT` is no longer used — ports are pinned in the prod/staging override files.
 
@@ -334,6 +383,8 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 - pg (node-postgres)
 - zod (validation)
 - date-fns (date math in frequency calc)
+- twilio (SMS sending)
+- node-cron (hourly reminder scheduler)
 - typescript, tsx (dev), ts-jest + jest + supertest (tests)
 
 ### Client

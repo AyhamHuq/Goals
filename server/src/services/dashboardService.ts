@@ -1,9 +1,10 @@
 import { getDaysInMonth, parseISO, differenceInDays } from 'date-fns';
 import { pool } from '../db/pool';
 import { calcProgress } from './frequencyCalc';
+import { getUserStreak } from './streakService';
 import { FrequencyType, GoalType } from '../types';
 
-interface RecentEntry {
+interface ProgressEntrySlim {
   id: string;
   value: number;
   logged_for: string;
@@ -28,7 +29,8 @@ interface GoalWithProgress {
   expected_value: number | null;
   percentage: number;
   on_track: boolean | null;
-  recent_entries: RecentEntry[];
+  recent_entries: ProgressEntrySlim[];
+  day_entries: ProgressEntrySlim[];
 }
 
 export interface PersonalDashboardResponse {
@@ -36,6 +38,9 @@ export interface PersonalDashboardResponse {
   days_in_month: number;
   days_elapsed: number;
   weeks_elapsed: number;
+  streak: number;
+  day_completed: boolean;
+  selected_day: string;
   goals: GoalWithProgress[];
 }
 
@@ -64,6 +69,7 @@ export async function getPersonalDashboard(
   const clampedRef = ref < monthStart ? monthStart : ref > monthEnd ? monthEnd : ref;
   const daysElapsed = differenceInDays(clampedRef, monthStart) + 1;
   const weeksElapsed = Math.round((daysElapsed / 7) * 100) / 100;
+  const selectedDay = ref.toISOString().split('T')[0];
 
   // Get all goals for this user+period
   const goalsResult = await pool.query(
@@ -80,31 +86,42 @@ export async function getPersonalDashboard(
   for (const row of goalsResult.rows) {
     let currentValue: number;
     if (row.goal_type === 'measurement') {
+      // Latest entry up to the selected day
       const latestResult = await pool.query(
         `SELECT value FROM progress_entries
-         WHERE goal_id = $1
+         WHERE goal_id = $1 AND logged_for <= $2
          ORDER BY logged_for DESC, created_at DESC
          LIMIT 1`,
-        [row.id],
+        [row.id, selectedDay],
       );
       currentValue = latestResult.rows.length > 0
         ? parseFloat(latestResult.rows[0].value)
         : parseFloat(row.start_value ?? row.target_value);
     } else {
+      // Sum of entries up to and including the selected day
       const sumResult = await pool.query(
-        `SELECT COALESCE(SUM(value), 0) AS current_value FROM progress_entries WHERE goal_id = $1`,
-        [row.id],
+        `SELECT COALESCE(SUM(value), 0) AS current_value FROM progress_entries
+         WHERE goal_id = $1 AND logged_for <= $2`,
+        [row.id, selectedDay],
       );
       currentValue = parseFloat(sumResult.rows[0].current_value);
     }
 
-    // Get recent 5 entries
+    // Recent 5 entries up to selected day
     const recentResult = await pool.query(
       `SELECT id, value, logged_for, note, logged_unit, logged_value FROM progress_entries
-       WHERE goal_id = $1
+       WHERE goal_id = $1 AND logged_for <= $2
        ORDER BY logged_for DESC, created_at DESC
        LIMIT 5`,
-      [row.id],
+      [row.id, selectedDay],
+    );
+
+    // Entries logged on exactly the selected day
+    const dayResult = await pool.query(
+      `SELECT id, value, logged_for, note, logged_unit, logged_value FROM progress_entries
+       WHERE goal_id = $1 AND logged_for = $2
+       ORDER BY created_at DESC`,
+      [row.id, selectedDay],
     );
 
     const startValue = row.start_value != null ? parseFloat(row.start_value) : undefined;
@@ -135,14 +152,27 @@ export async function getPersonalDashboard(
       percentage: Math.round(calc.percentage * 100) / 100,
       on_track: calc.onTrack,
       recent_entries: recentResult.rows,
+      day_entries: dayResult.rows,
     });
   }
+
+  const streak = await getUserStreak(userId, ref);
+
+  // Check if user marked this day as done
+  const completionResult = await pool.query(
+    `SELECT 1 FROM daily_completions WHERE user_id = $1 AND completed_date = $2 LIMIT 1`,
+    [userId, selectedDay],
+  );
+  const dayCompleted = completionResult.rows.length > 0;
 
   return {
     period_key: periodKey,
     days_in_month: daysInMonth,
     days_elapsed: daysElapsed,
     weeks_elapsed: weeksElapsed,
+    streak,
+    day_completed: dayCompleted,
+    selected_day: selectedDay,
     goals,
   };
 }
@@ -153,6 +183,7 @@ export async function getGroupDashboard(
   referenceDate?: Date,
 ): Promise<GroupDashboardResponse> {
   const ref = referenceDate ?? new Date();
+  const selectedDay = ref.toISOString().split('T')[0];
 
   const usersResult = await pool.query(
     `SELECT id, display_name, avatar_color FROM users WHERE group_id = $1 ORDER BY sort_order ASC`,
@@ -168,7 +199,7 @@ export async function getGroupDashboard(
                 WHEN g.goal_type = 'measurement' THEN (
                   SELECT pe2.value
                   FROM progress_entries pe2
-                  WHERE pe2.goal_id = g.id
+                  WHERE pe2.goal_id = g.id AND pe2.logged_for <= $3
                   ORDER BY pe2.logged_for DESC, pe2.created_at DESC
                   LIMIT 1
                 )
@@ -176,11 +207,13 @@ export async function getGroupDashboard(
               END AS current_value
        FROM goals g
        LEFT JOIN categories c ON g.category_id = c.id
-       LEFT JOIN progress_entries pe ON pe.goal_id = g.id AND g.goal_type = 'accumulation'
+       LEFT JOIN progress_entries pe ON pe.goal_id = g.id
+         AND g.goal_type = 'accumulation'
+         AND pe.logged_for <= $3
        WHERE g.user_id = $1 AND g.period_key = $2
        GROUP BY g.id, c.id, c.name
        ORDER BY g.created_at ASC`,
-      [userRow.id, periodKey],
+      [userRow.id, periodKey, selectedDay],
     );
 
     const goals: GoalWithProgress[] = goalsResult.rows.map((row) => {
@@ -216,6 +249,7 @@ export async function getGroupDashboard(
         percentage: Math.round(calc.percentage * 100) / 100,
         on_track: calc.onTrack,
         recent_entries: [],
+        day_entries: [],
       };
     });
 

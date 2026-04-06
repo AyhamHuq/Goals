@@ -9,6 +9,7 @@ import progressRouter from './routes/progress';
 import dashboardRouter from './routes/dashboard';
 import historyRouter from './routes/history';
 import sandboxRouter from './routes/sandbox';
+import dailyCompletionsRouter from './routes/dailyCompletions';
 
 export const app = express();
 
@@ -26,5 +27,6 @@ app.use('/api/progress', progressRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/sandbox', sandboxRouter);
+app.use('/api/daily-completions', dailyCompletionsRouter);
 
 app.use(errorHandler);

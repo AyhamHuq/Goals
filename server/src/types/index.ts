@@ -16,6 +16,8 @@ export interface User {
   sort_order: number;
   last_active_at: Date | null;
   created_at: Date;
+  sms_reminders_enabled: boolean;
+  reminder_hour: number;
 }
 
 export interface Category {

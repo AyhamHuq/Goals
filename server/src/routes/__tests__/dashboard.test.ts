@@ -39,7 +39,7 @@ describe('GET /api/dashboard/personal', () => {
     );
     expect(res.status).toBe(200);
     expect(res.body.period_key).toBe('2026-04');
-    expect(mockPersonal).toHaveBeenCalledWith(USER_ID, '2026-04');
+    expect(mockPersonal).toHaveBeenCalledWith(USER_ID, '2026-04', undefined);
   });
 
   it('returns 400 when user_id is missing', async () => {

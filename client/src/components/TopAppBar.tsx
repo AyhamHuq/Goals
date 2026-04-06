@@ -8,8 +8,7 @@ import {
   Tabs,
   Tab,
   Button,
-  Menu,
-  MenuItem,
+  IconButton,
   Popover,
   List,
   ListItemButton,
@@ -17,40 +16,26 @@ import {
   ListItemText,
   Divider,
 } from '@mui/material';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { format, subMonths } from 'date-fns';
 import { useUserContext } from '../context/UserContext';
 import { usePeriodContext } from '../context/PeriodContext';
-import { periodKeyToLabel } from '../utils/dates';
+import { formatDayLabel, formatDayLabelShort } from '../utils/dates';
 
 export default function TopAppBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedUser } = useUserContext();
-  const { periodKey, setPeriodKey } = usePeriodContext();
+  const { selectedDay, isToday, goToToday, goToPreviousDay, goToNextDay } = usePeriodContext();
 
-  const [periodAnchor, setPeriodAnchor] = useState<null | HTMLElement>(null);
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
-
-  // Build list: current month + 3 past months
-  const now = new Date();
-  const periodOptions: string[] = [];
-  for (let i = 0; i < 4; i++) {
-    periodOptions.push(format(subMonths(now, i), 'yyyy-MM'));
-  }
 
   const currentTab = location.pathname === '/group' ? 1 : 0;
 
   const handleTabChange = (_: React.SyntheticEvent, val: number) => {
     navigate(val === 0 ? '/dashboard' : '/group');
-  };
-
-  const handleSelectPeriod = (pk: string) => {
-    setPeriodKey(pk);
-    setPeriodAnchor(null);
   };
 
   return (
@@ -136,46 +121,54 @@ export default function TopAppBar() {
 
         <Box flex={1} />
 
-        {/* Period selector as Button */}
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={(e) => setPeriodAnchor(e.currentTarget)}
-          sx={{
-            borderColor: 'divider',
-            color: 'text.primary',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            px: { xs: 1, sm: 1.5 },
-            minWidth: 0,
-            gap: 0.5,
-          }}
-        >
-          <CalendarMonthIcon sx={{ fontSize: 16, display: { xs: 'block', sm: 'none' } }} />
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-            <CalendarMonthIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
-            {periodKeyToLabel(periodKey)}
-            <KeyboardArrowDownIcon sx={{ fontSize: 16, ml: 0.5, verticalAlign: 'middle' }} />
-          </Box>
-        </Button>
+        {/* Day navigator */}
+        <Box display="flex" alignItems="center" gap={0.5}>
+          <IconButton size="small" onClick={goToPreviousDay} sx={{ color: 'text.primary' }}>
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
 
-        <Menu
-          open={Boolean(periodAnchor)}
-          anchorEl={periodAnchor}
-          onClose={() => setPeriodAnchor(null)}
-          PaperProps={{ sx: { borderRadius: 2, minWidth: 160 } }}
-        >
-          {periodOptions.map((pk) => (
-            <MenuItem
-              key={pk}
-              selected={pk === periodKey}
-              onClick={() => handleSelectPeriod(pk)}
-              sx={{ fontWeight: pk === periodKey ? 700 : 400 }}
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            sx={{ fontSize: '0.8rem', minWidth: { xs: 52, sm: 140 }, textAlign: 'center' }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {formatDayLabel(selectedDay)}
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              {formatDayLabelShort(selectedDay)}
+            </Box>
+          </Typography>
+
+          <IconButton
+            size="small"
+            onClick={goToNextDay}
+            disabled={isToday}
+            sx={{ color: 'text.primary' }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+
+          {!isToday && (
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              onClick={goToToday}
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                px: 1.5,
+                minWidth: 0,
+                display: { xs: 'none', sm: 'flex' },
+                boxShadow: 'none',
+                '&:hover': { boxShadow: 'none' },
+              }}
             >
-              {periodKeyToLabel(pk)}
-            </MenuItem>
-          ))}
-        </Menu>
+              Back to today
+            </Button>
+          )}
+        </Box>
 
         {/* View toggle */}
         <Tabs

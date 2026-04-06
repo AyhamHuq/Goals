@@ -1,4 +1,4 @@
-import { format, parse, isToday, isYesterday, getDaysInMonth, parseISO, differenceInDays } from 'date-fns';
+import { format, parse, isToday, isYesterday, getDaysInMonth, parseISO, differenceInDays, isSameDay } from 'date-fns';
 
 export function periodKeyToLabel(periodKey: string): string {
   const date = parse(periodKey, 'yyyy-MM', new Date());
@@ -18,6 +18,24 @@ export function periodProportionalThreshold(periodKey: string): number {
   const clamped = ref < monthStart ? monthStart : ref > monthEnd ? monthEnd : ref;
   const daysElapsed = differenceInDays(clamped, monthStart) + 1;
   return (daysElapsed / daysInMonth) * 100;
+}
+
+/** Parse a YYYY-MM-DD key into a local-timezone Date (midnight local) */
+function parseDayKey(dayKey: string): Date {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** '2026-04-06' → 'Monday, Apr 6' (or 'Today, Apr 6') */
+export function formatDayLabel(dayKey: string): string {
+  const d = parseDayKey(dayKey);
+  if (isSameDay(d, new Date())) return `Today, ${format(d, 'MMM d')}`;
+  return format(d, 'EEEE, MMM d');
+}
+
+/** '2026-04-06' → 'Apr 6' */
+export function formatDayLabelShort(dayKey: string): string {
+  return format(parseDayKey(dayKey), 'MMM d');
 }
 
 export function formatLoggedFor(date: string): string {

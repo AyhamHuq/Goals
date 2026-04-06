@@ -13,23 +13,17 @@ beforeEach(() => {
 
 const USER_ID = '123e4567-e89b-12d3-a456-426614174000';
 
-function makeDate(daysAgo: number, ref: Date = new Date()): string {
-  const d = new Date(ref);
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().split('T')[0];
-}
-
 describe('getUserStreak', () => {
-  it('returns 0 when user has no progress entries', async () => {
+  it('returns 0 when user has no daily completions', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     const result = await getUserStreak(USER_ID);
     expect(result).toBe(0);
   });
 
-  it('returns 1 when user only logged today', async () => {
+  it('returns 1 when user only completed today', async () => {
     const ref = new Date('2026-04-10');
     mockQuery.mockResolvedValueOnce({
-      rows: [{ logged_for: '2026-04-10' }],
+      rows: [{ completed_date: '2026-04-10' }],
     });
     const result = await getUserStreak(USER_ID, ref);
     expect(result).toBe(1);
@@ -39,10 +33,10 @@ describe('getUserStreak', () => {
     const ref = new Date('2026-04-10');
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { logged_for: '2026-04-10' },
-        { logged_for: '2026-04-09' },
-        { logged_for: '2026-04-08' },
-        { logged_for: '2026-04-07' },
+        { completed_date: '2026-04-10' },
+        { completed_date: '2026-04-09' },
+        { completed_date: '2026-04-08' },
+        { completed_date: '2026-04-07' },
       ],
     });
     const result = await getUserStreak(USER_ID, ref);
@@ -53,53 +47,54 @@ describe('getUserStreak', () => {
     const ref = new Date('2026-04-10');
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { logged_for: '2026-04-10' },
-        { logged_for: '2026-04-09' },
+        { completed_date: '2026-04-10' },
+        { completed_date: '2026-04-09' },
         // gap: missing 2026-04-08
-        { logged_for: '2026-04-07' },
-        { logged_for: '2026-04-06' },
+        { completed_date: '2026-04-07' },
+        { completed_date: '2026-04-06' },
       ],
     });
     const result = await getUserStreak(USER_ID, ref);
     expect(result).toBe(2);
   });
 
-  it('still counts streak if user logged yesterday but not yet today (grace period)', async () => {
+  it('still counts streak if user completed yesterday but not yet today (grace period)', async () => {
     const ref = new Date('2026-04-10');
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { logged_for: '2026-04-09' },
-        { logged_for: '2026-04-08' },
-        { logged_for: '2026-04-07' },
+        { completed_date: '2026-04-09' },
+        { completed_date: '2026-04-08' },
+        { completed_date: '2026-04-07' },
       ],
     });
     const result = await getUserStreak(USER_ID, ref);
     expect(result).toBe(3);
   });
 
-  it('returns 0 if last entry was 2+ days ago', async () => {
+  it('returns 0 if last completion was 2+ days ago', async () => {
     const ref = new Date('2026-04-10');
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { logged_for: '2026-04-08' },
-        { logged_for: '2026-04-07' },
+        { completed_date: '2026-04-08' },
+        { completed_date: '2026-04-07' },
       ],
     });
     const result = await getUserStreak(USER_ID, ref);
     expect(result).toBe(0);
   });
 
-  it('counts entries across different goals (any goal logged counts)', async () => {
+  it('retroactive completion repairs streak', async () => {
+    // User missed Apr 8 but went back and marked it done
     const ref = new Date('2026-04-10');
-    // Three consecutive days — entries could be from different goals
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { logged_for: '2026-04-10' },
-        { logged_for: '2026-04-09' },
-        { logged_for: '2026-04-08' },
+        { completed_date: '2026-04-10' },
+        { completed_date: '2026-04-09' },
+        { completed_date: '2026-04-08' }, // retroactively filled in
+        { completed_date: '2026-04-07' },
       ],
     });
     const result = await getUserStreak(USER_ID, ref);
-    expect(result).toBe(3);
+    expect(result).toBe(4);
   });
 });

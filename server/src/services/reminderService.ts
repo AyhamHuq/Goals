@@ -30,15 +30,12 @@ export async function sendDailyReminders(currentHour: number, today: Date): Prom
 
   for (const user of usersResult.rows) {
     try {
-      // Check if user already logged any progress today
-      const loggedResult = await pool.query(
-        `SELECT 1 FROM progress_entries pe
-         JOIN goals g ON pe.goal_id = g.id
-         WHERE g.user_id = $1 AND pe.logged_for = $2
-         LIMIT 1`,
+      // Check if user already marked today as done
+      const completedResult = await pool.query(
+        `SELECT 1 FROM daily_completions WHERE user_id = $1 AND completed_date = $2 LIMIT 1`,
         [user.id, todayStr],
       );
-      if (loggedResult.rows.length > 0) continue;
+      if (completedResult.rows.length > 0) continue;
 
       // Check if we already sent a reminder today (idempotency)
       const alreadySentResult = await pool.query(
@@ -68,7 +65,7 @@ export async function sendDailyReminders(currentHour: number, today: Date): Prom
 
 function composeMessage(name: string, streak: number): string {
   if (streak > 0) {
-    return `Hey ${name}! You have a ${streak}-day streak. Don't lose it — log your progress today!`;
+    return `Hey ${name}! ${streak}-day streak. Log progress & mark done to keep it!`;
   }
-  return `Hey ${name}! Don't forget to log your progress today. Every day counts!`;
+  return `Hey ${name}! Log your progress and mark your day done. Every day counts!`;
 }

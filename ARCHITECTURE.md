@@ -273,6 +273,20 @@ Exports `sendDailyReminders(currentHour, today)`. Runs via `node-cron` every hou
 
 `PATCH /api/users/:id/preferences` — update `phone`, `sms_reminders_enabled`, `reminder_hour`.
 
+### Daily Completions Table
+
+```sql
+CREATE TABLE daily_completions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    completed_date  DATE NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, completed_date)
+);
+```
+
+Users mark a day as done via **`POST /api/daily-completions`**. This drives the streak — not raw progress entries. GET/DELETE endpoints support range queries and undo.
+
 ### Notification Log Table
 
 ```sql

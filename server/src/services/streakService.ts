@@ -26,21 +26,16 @@ export async function getUserStreak(userId: string, referenceDate?: Date): Promi
   const yesterdayStr = subtractDays(todayStr, 1);
 
   const result = await pool.query(
-    `SELECT DISTINCT pe.logged_for::date AS logged_for
-     FROM progress_entries pe
-     JOIN goals g ON pe.goal_id = g.id
-     WHERE g.user_id = $1
-       AND pe.logged_for <= $2
-     ORDER BY logged_for DESC`,
+    `SELECT completed_date::text AS completed_date
+     FROM daily_completions
+     WHERE user_id = $1
+       AND completed_date <= $2
+     ORDER BY completed_date DESC`,
     [userId, todayStr],
   );
 
   const dates: Set<string> = new Set(
-    result.rows.map((r: { logged_for: Date | string }) => {
-      const d = r.logged_for;
-      if (d instanceof Date) return toUtcDateStr(d);
-      return String(d).split('T')[0];
-    }),
+    result.rows.map((r: { completed_date: string }) => r.completed_date.split('T')[0]),
   );
 
   if (dates.size === 0) return 0;

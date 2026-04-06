@@ -45,10 +45,10 @@ describe('sendDailyReminders', () => {
     expect(mockSendSms).not.toHaveBeenCalled();
   });
 
-  it('skips users who already logged progress today', async () => {
+  it('skips users who already marked today as done', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [USER] }) // eligible users
-      .mockResolvedValueOnce({ rows: [{ id: 'pe-1' }] }) // already logged today
+      .mockResolvedValueOnce({ rows: [{ id: 'comp-1' }] }) // already marked done today
     ;
     await sendDailyReminders(20, TODAY);
     expect(mockSendSms).not.toHaveBeenCalled();
@@ -78,6 +78,7 @@ describe('sendDailyReminders', () => {
     expect(callArgs.to).toBe('+15551234567');
     expect(callArgs.message).toContain('5-day streak');
     expect(callArgs.message).toContain('Alice');
+    expect(callArgs.message).toContain('mark done');
   });
 
   it('sends generic reminder when user has no streak', async () => {

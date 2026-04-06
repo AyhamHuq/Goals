@@ -15,7 +15,10 @@ router.get('/personal', async (req: Request, res: Response, next: NextFunction):
       res.status(400).json({ error: 'period_key query parameter is required' });
       return;
     }
-    const data = await getPersonalDashboard(user_id, period_key);
+    const refDate = typeof req.query.reference_date === 'string'
+      ? new Date(req.query.reference_date + 'T00:00:00Z')
+      : undefined;
+    const data = await getPersonalDashboard(user_id, period_key, refDate);
     res.json(data);
   } catch (err) {
     next(err);
@@ -34,7 +37,10 @@ router.get('/group', async (req: Request, res: Response, next: NextFunction): Pr
       res.status(400).json({ error: 'period_key query parameter is required' });
       return;
     }
-    const data = await getGroupDashboard(group_id, period_key);
+    const refDate = typeof req.query.reference_date === 'string'
+      ? new Date(req.query.reference_date + 'T00:00:00Z')
+      : undefined;
+    const data = await getGroupDashboard(group_id, period_key, refDate);
     res.json(data);
   } catch (err) {
     next(err);

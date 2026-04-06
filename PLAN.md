@@ -160,7 +160,8 @@ Goals/
 
 - Authentication (OAuth/email+password)
 - ~~Twilio SMS notifications~~ ✅ Implemented — `smsService.ts`, `reminderService.ts`, node-cron scheduler
-- ~~Streak tracking~~ ✅ Implemented — `streakService.ts`, displayed in personal dashboard stats bar
+- ~~Streak tracking~~ ✅ Implemented — `streakService.ts`, driven by `daily_completions` table; retroactive repair supported
+- ~~Day-focused navigation~~ ✅ Implemented — day navigator in TopAppBar replaces month picker; dashboard filtered by selected day; "Done for today" button
 - Admin role (unlock/edit goals, manage users)
 - Social features (comments, likes, encouragement feed)
 - Pacing suggestions

@@ -8,11 +8,13 @@ import {
   Stack,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import FlagIcon from '@mui/icons-material/Flag';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import PercentIcon from '@mui/icons-material/Percent';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
@@ -20,10 +22,11 @@ import { getHours } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { usePeriodContext } from '../../context/PeriodContext';
 import { usePersonalDashboard } from '../../hooks/useDashboard';
-import { periodKeyToLabel } from '../../utils/dates';
+import { formatDayLabel, periodKeyToLabel } from '../../utils/dates';
 import GoalCard from './GoalCard';
 import GoalFormDialog from '../goals/GoalFormDialog';
 import NotificationSettings from '../NotificationSettings';
+import { useMarkDayComplete, useUnmarkDayComplete } from '../../hooks/useDailyCompletions';
 
 function greeting(): string {
   const h = getHours(new Date());
@@ -58,14 +61,17 @@ function GoalCardSkeleton() {
 
 export default function PersonalDashboard() {
   const { selectedUser } = useUserContext();
-  const { periodKey, isCurrentPeriod } = usePeriodContext();
+  const { selectedDay, periodKey, isCurrentPeriod, isToday } = usePeriodContext();
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const markComplete = useMarkDayComplete();
+  const unmarkComplete = useUnmarkDayComplete();
 
-  const { data, isLoading, isError } = usePersonalDashboard(selectedUser?.id, periodKey);
+  const { data, isLoading, isError } = usePersonalDashboard(selectedUser?.id, periodKey, selectedDay);
 
   const goals = data?.goals ?? [];
   const streak = data?.streak ?? 0;
+  const dayCompleted = data?.day_completed ?? false;
   // For paced goals use on_track; for non-paced (total/measurement) use proportional time elapsed
   const proportionalThreshold = data
     ? (data.days_elapsed / data.days_in_month) * 100
@@ -95,9 +101,9 @@ export default function PersonalDashboard() {
           <Typography variant="h5" fontWeight={700}>
             {greeting()}, {selectedUser?.display_name ?? ''} 👋
           </Typography>
-          {!isCurrentPeriod && (
+          {!isToday && (
             <Chip
-              label="Past period — read only"
+              label={`Viewing: ${formatDayLabel(selectedDay)}`}
               size="small"
               variant="outlined"
               color="warning"
@@ -201,9 +207,55 @@ export default function PersonalDashboard() {
       {!isLoading && totalCount > 0 && (
         <Stack spacing={2}>
           {goals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} readOnly={!isCurrentPeriod} />
+            <GoalCard key={goal.id} goal={goal} readOnly={false} selectedDay={selectedDay} />
           ))}
         </Stack>
+      )}
+
+      {/* Done for today button */}
+      {!isLoading && totalCount > 0 && selectedUser && (
+        <Box mt={3} display="flex" justifyContent="center">
+          {dayCompleted ? (
+            <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+              <Chip
+                icon={<CheckCircleIcon sx={{ fontSize: 18 }} />}
+                label="Day completed!"
+                color="success"
+                sx={{ fontWeight: 700, fontSize: '0.9rem', px: 1 }}
+              />
+              <Button
+                size="small"
+                variant="text"
+                color="inherit"
+                sx={{ color: 'text.secondary', fontSize: '0.75rem' }}
+                disabled={unmarkComplete.isPending}
+                onClick={() =>
+                  unmarkComplete.mutate({ userId: selectedUser.id, completedDate: selectedDay })
+                }
+              >
+                Undo
+              </Button>
+            </Box>
+          ) : (
+            <Button
+              variant="contained"
+              color="success"
+              size="large"
+              startIcon={
+                markComplete.isPending
+                  ? <CircularProgress size={18} color="inherit" />
+                  : <CheckCircleOutlineIcon />
+              }
+              disabled={markComplete.isPending}
+              onClick={() =>
+                markComplete.mutate({ userId: selectedUser.id, completedDate: selectedDay })
+              }
+              sx={{ borderRadius: 3, px: 4, fontWeight: 700 }}
+            >
+              {isToday ? 'Done for today' : 'Mark day as done'}
+            </Button>
+          )}
+        </Box>
       )}
 
       {selectedUser && (

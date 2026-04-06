@@ -13,12 +13,14 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import { GoalWithProgress } from '../../types';
 import { formatPercentage, getMonthlyDisplay, getMonthlyLabel, fmtValue } from '../../utils/frequency';
 import { getUnitsForCategory, convertUnit } from '../../constants/unitConversions';
+import { fmtValue as fmtV } from '../../utils/frequency';
 import QuickLogButton from '../progress/QuickLogButton';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
 
 interface GoalCardProps {
   goal: GoalWithProgress & { id: string };
   readOnly?: boolean;
+  selectedDay?: string;
 }
 
 type PacingColor = 'success' | 'warning' | 'error' | 'primary';
@@ -41,7 +43,7 @@ const colorHexMap: Record<PacingColor, string> = {
   primary: '#5C6BC0',
 };
 
-export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
+export default function GoalCard({ goal, readOnly = false, selectedDay }: GoalCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState(goal.unit);
   const unitOptions = goal.category ? getUnitsForCategory(goal.category.name) : [];
@@ -194,6 +196,16 @@ export default function GoalCard({ goal, readOnly = false }: GoalCardProps) {
             <Box onClick={(e) => e.stopPropagation()} mt={0.5}>
               <QuickLogButton goal={goal} />
             </Box>
+          )}
+
+          {/* Today's logged entries for this goal */}
+          {goal.day_entries && goal.day_entries.length > 0 && (
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.75}>
+              {selectedDay ? 'Today' : 'Logged'}:{' '}
+              {goal.goal_type === 'accumulation'
+                ? `+${fmtV(goal.day_entries.reduce((s, e) => s + Number(e.value), 0))} ${goal.unit}`
+                : `${fmtV(Number(goal.day_entries[0].value))} ${goal.unit}`}
+            </Typography>
           )}
         </CardContent>
       </Card>

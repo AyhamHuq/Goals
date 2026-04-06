@@ -238,8 +238,8 @@ export default function PersonalDashboard() {
             </Box>
           ) : (
             <Button
-              variant="contained"
-              color="success"
+              variant="outlined"
+              color="primary"
               size="large"
               startIcon={
                 markComplete.isPending

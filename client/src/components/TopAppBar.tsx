@@ -152,19 +152,20 @@ export default function TopAppBar() {
           {!isToday && (
             <Button
               size="small"
-              variant="outlined"
+              variant="contained"
+              color="primary"
               onClick={goToToday}
               sx={{
-                borderColor: 'divider',
-                color: 'text.primary',
                 fontWeight: 600,
                 fontSize: '0.75rem',
-                px: 1,
+                px: 1.5,
                 minWidth: 0,
                 display: { xs: 'none', sm: 'flex' },
+                boxShadow: 'none',
+                '&:hover': { boxShadow: 'none' },
               }}
             >
-              Today
+              Back to today
             </Button>
           )}
         </Box>

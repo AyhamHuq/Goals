@@ -28,8 +28,8 @@ export const UNIT_CONVERSIONS: Record<string, UnitConversionMap> = {
   },
   'Professional Learning': {
     baseUnit: 'hours',
-    units: ['flashcards', 'minutes', 'hours'],
-    toBase: { hours: 1, minutes: 1 / 60, flashcards: 0.2 },
+    units: ['flashcards', 'minutes', 'hours', 'jobs'],
+    toBase: { hours: 1, minutes: 1 / 60, flashcards: 0.2, jobs: 10 / 60 },
   },
 };
 

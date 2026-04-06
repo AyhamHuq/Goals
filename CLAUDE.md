@@ -23,6 +23,7 @@ All GitHub operations (push, PR creation, PR review) must use the `goals-claude-
 - **Feature branches**: Work in a feature branch, never commit directly to main.
 - **Commit discipline**: Only commit when code is in a good, working state.
 - **Push when green**: Only push to remote when all tests pass.
+- **Rebase before PR**: Before pushing and opening a PR, always rebase the feature branch onto the latest `main` (`git fetch origin && git rebase origin/main`) so the branch is up to date.
 - **PRs when ready**: Push the feature branch to origin and open a PR with a description. Never push directly to `main` — always merge via PR.
 - **PR description**: Must include **what** changed and **why** (motivation/context). Use `gh pr create --title "..." --body "..."` with a Summary section (what) and a Motivation section (why).
 - **PR reviewer**: Always assign `AyhamHuq` as reviewer via `gh pr create --reviewer AyhamHuq`.

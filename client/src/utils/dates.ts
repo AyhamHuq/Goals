@@ -20,17 +20,22 @@ export function periodProportionalThreshold(periodKey: string): number {
   return (daysElapsed / daysInMonth) * 100;
 }
 
-/** '2026-04-05' → 'Sunday, Apr 5' */
+/** Parse a YYYY-MM-DD key into a local-timezone Date (midnight local) */
+function parseDayKey(dayKey: string): Date {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** '2026-04-06' → 'Monday, Apr 6' (or 'Today, Apr 6') */
 export function formatDayLabel(dayKey: string): string {
-  const d = new Date(dayKey + 'T00:00:00Z');
-  if (isSameDay(d, new Date()) ) return `Today, ${format(d, 'MMM d')}`;
+  const d = parseDayKey(dayKey);
+  if (isSameDay(d, new Date())) return `Today, ${format(d, 'MMM d')}`;
   return format(d, 'EEEE, MMM d');
 }
 
-/** '2026-04-05' → 'Apr 5' */
+/** '2026-04-06' → 'Apr 6' */
 export function formatDayLabelShort(dayKey: string): string {
-  const d = new Date(dayKey + 'T00:00:00Z');
-  return format(d, 'MMM d');
+  return format(parseDayKey(dayKey), 'MMM d');
 }
 
 export function formatLoggedFor(date: string): string {

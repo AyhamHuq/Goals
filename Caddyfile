@@ -1,10 +1,15 @@
-# Replace yourdomain.com with your actual domain.
+# Host-level Caddy reverse proxy (runs on the Hetzner server, not in Docker).
 # Both A records must point to the server IP before first deploy.
+#
+# Prerequisites for HTTPS:
+# 1. Create a free subdomain at https://www.duckdns.org
+# 2. Point the DuckDNS A record to your Hetzner server IP
+# 3. Replace your-subdomain.duckdns.org with your actual subdomain below
 
-goals.yourdomain.com {
+your-subdomain.duckdns.org {
     reverse_proxy localhost:3100
 }
 
-staging.goals.yourdomain.com {
+staging.your-subdomain.duckdns.org {
     reverse_proxy localhost:3101
 }

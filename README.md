@@ -54,7 +54,7 @@ Goals/
 │   │   ├── services/
 │   │   │   ├── dashboardService.ts  # Aggregation + pacing
 │   │   │   ├── frequencyCalc.ts     # Pure frequency math (56 tests)
-│   │   │   └── smsService.ts        # Twilio stub (TWILIO_ENABLED=false)
+│   │   │   └── pushService.ts       # Web Push via web-push + VAPID
 │   │   └── middleware/      # errorHandler, validate (zod)
 │   ├── seed.ts              # 1 group, 6 users, 8 categories
 │   └── Dockerfile
@@ -87,16 +87,20 @@ Normal mode starts the database, runs migrations + seed, and launches both dev s
 # 1. Copy env
 cp .env.example .env
 
-# 2. Start the database
+# 2. Generate VAPID keys for Web Push and add them to .env
+npx web-push generate-vapid-keys
+# Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL to .env
+
+# 3. Start the database
 docker compose up db -d
 
-# 3. Install + migrate + seed
+# 4. Install + migrate + seed
 cd server && npm install && npm run migrate && npm run seed && cd ..
 
-# 4. Start the backend (hot reload)
+# 5. Start the backend (hot reload)
 cd server && npm run dev
 
-# 5. In another terminal, start the frontend
+# 6. In another terminal, start the frontend
 cd client && npm install && npm run dev
 ```
 
@@ -107,8 +111,8 @@ Frontend: http://localhost:5173 · Backend: http://localhost:3001 · Health: htt
 The app runs on a single Hetzner CX23 server with two isolated environments — **staging** and **production** — sharing the same machine via Docker Compose project isolation.
 
 ```
-http://server-ip       → prod    (port 80)
-http://server-ip:3101  → staging (port 3101)
+https://yourname.duckdns.org       → prod    (Caddy → port 3100)
+https://yourname-staging.duckdns.org → staging (Caddy → port 3101)
 ```
 
 Each environment is a fully independent Docker Compose project (`-p goals-prod` / `-p goals-staging`) with its own containers, network, volume, and database (`goals` / `goals_staging`).
@@ -118,13 +122,23 @@ Each environment is a fully independent Docker Compose project (`-p goals-prod` 
 - **Open/push to a PR** → tests run + auto-deploy to staging
 - **Merge to `main`** → auto-deploy to production
 
+### HTTPS Setup (DuckDNS + Caddy)
+
+Web Push requires HTTPS. The production host uses Caddy (installed on the host, not in Docker) with a free DuckDNS subdomain:
+
+1. Register a subdomain at [duckdns.org](https://www.duckdns.org) and point it at your server IP.
+2. Update the `Caddyfile` in the repo root with your subdomain and DuckDNS token.
+3. Install Caddy on the host and reload: `sudo systemctl reload caddy`.
+
+Caddy handles TLS automatically via Let's Encrypt and reverse-proxies to the Docker containers on ports 3100 (prod) and 3101 (staging).
+
 ### First-Time Server Setup
 
 ```bash
 # Install Docker, clone repo, create env files
 mkdir -p /opt/goals/prod /opt/goals/staging
-# /opt/goals/prod/.env  — DB_PASSWORD, NODE_ENV=production, SEED_USERS
-# /opt/goals/staging/.env — DB_PASSWORD, NODE_ENV=staging, SEED_USERS
+# /opt/goals/prod/.env  — DB_PASSWORD, NODE_ENV=production, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
+# /opt/goals/staging/.env — DB_PASSWORD, NODE_ENV=staging, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
 
 docker compose -p goals-staging --env-file /opt/goals/staging/.env \
   -f docker-compose.yml -f docker-compose.staging.yml up -d --build
@@ -153,12 +167,13 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 | Area | Key Endpoints |
 |------|--------------|
 | Health | `GET /health` — includes `sandbox: bool` field |
-| Users | `GET /api/users`, `PATCH /api/users/:id/touch` |
+| Users | `GET /api/users`, `PATCH /api/users/:id/touch`, `PATCH /api/users/:id/preferences` |
 | Categories | `GET/POST /api/categories` |
 | Goals | `GET/POST /api/goals`, `PUT/DELETE /api/goals/:id`, `POST /api/goals/copy-from-previous` |
 | Progress | `GET/POST /api/progress`, `PUT/DELETE /api/progress/:id` |
 | Dashboard | `GET /api/dashboard/personal`, `GET /api/dashboard/group` |
 | History | `GET /api/history`, `GET /api/history/:period_key` |
+| Push | `GET /api/push/vapid-public-key`, `POST /api/push/subscribe`, `DELETE /api/push/unsubscribe` |
 
 ## Key Design Decisions
 
@@ -166,7 +181,7 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 - **No cached progress**: `current_value` is always `SUM(progress_entries.value)` — computed server-side.
 - **Pacing computed server-side**: `dashboardService.ts` handles all frequency math so the client is purely presentational.
 - **Migrations on startup**: Server calls `runMigrations()` before `listen()` — zero manual steps in production.
-- **Twilio stubbed**: `smsService.ts` logs to console until `TWILIO_ENABLED=true` in V2.
+- **PWA push notifications**: `pushService.ts` sends Web Push via VAPID. Requires HTTPS (Caddy + DuckDNS on host). Users subscribe per-device; subscriptions stored in `push_subscriptions` table.
 
 ## Development Practices
 
@@ -177,10 +192,11 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 
 ## Roadmap
 
-- **V2**: Custom domain + Caddy reverse proxy (HTTPS via Let's Encrypt, DuckDNS for free subdomain)
-- **V3**: Authentication (OAuth), real Twilio SMS, admin role
-- **V3**: Comments, streak tracking, pacing suggestions
+- ~~**V2**: Custom domain + Caddy reverse proxy (HTTPS via Let's Encrypt, DuckDNS for free subdomain)~~ ✅ Done — Caddy + DuckDNS HTTPS active in production
+- ~~**V2**: PWA push notifications replacing Twilio SMS~~ ✅ Done — `web-push` + VAPID, service worker, `push_subscriptions` table
+- **V3**: Authentication (OAuth), admin role
+- **V3**: Comments, pacing suggestions
 - **V4**: Category leaderboards, shared group goals
-- **V5**: Charts, heatmaps, PWA / offline support
+- **V5**: Charts, heatmaps, PWA offline support
 
 See [PLAN.md](./PLAN.md) for full phase breakdown and [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.

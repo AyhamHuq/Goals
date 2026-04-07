@@ -6,10 +6,10 @@
 # 2. Point the DuckDNS A record to your Hetzner server IP
 # 3. Replace your-subdomain.duckdns.org with your actual subdomain below
 
-your-subdomain.duckdns.org {
+goaltracking.duckdns.org {
     reverse_proxy localhost:3100
 }
 
-staging.your-subdomain.duckdns.org {
+staging.goaltracking.duckdns.org {
     reverse_proxy localhost:3101
 }

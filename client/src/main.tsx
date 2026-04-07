@@ -11,6 +11,7 @@ import { PeriodProvider } from './context/PeriodContext';
 import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SandboxBanner } from './components/SandboxBanner';
+import { registerServiceWorker } from './utils/pushNotifications';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,6 +21,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

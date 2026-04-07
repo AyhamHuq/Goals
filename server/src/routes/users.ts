@@ -37,8 +37,7 @@ router.patch('/:id/touch', async (req: Request, res: Response, next: NextFunctio
 
 const preferencesSchema = z
   .object({
-    phone: z.string().max(20).nullable().optional(),
-    sms_reminders_enabled: z.boolean().optional(),
+    push_reminders_enabled: z.boolean().optional(),
     reminder_hour: z.number().int().min(0).max(23).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -55,13 +54,9 @@ router.patch('/:id/preferences', validate(preferencesSchema), async (req: Reques
     const values: unknown[] = [];
     let idx = 1;
 
-    if (fields.phone !== undefined) {
-      setClauses.push(`phone = $${idx++}`);
-      values.push(fields.phone);
-    }
-    if (fields.sms_reminders_enabled !== undefined) {
-      setClauses.push(`sms_reminders_enabled = $${idx++}`);
-      values.push(fields.sms_reminders_enabled);
+    if (fields.push_reminders_enabled !== undefined) {
+      setClauses.push(`push_reminders_enabled = $${idx++}`);
+      values.push(fields.push_reminders_enabled);
     }
     if (fields.reminder_hour !== undefined) {
       setClauses.push(`reminder_hour = $${idx++}`);

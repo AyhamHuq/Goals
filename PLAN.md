@@ -12,14 +12,15 @@ Building a lightweight web app for a family of 5-7 people to set monthly goals, 
 - **Data fetching:** @tanstack/react-query
 - **Validation:** zod (server-side)
 - **Deployment:** Docker Compose (nginx + node + postgres)
-- **Notifications:** Twilio SMS (stubbed in MVP via `smsService.ts`, implement in V2)
+- **Notifications:** Web Push via `web-push` + VAPID (PWA service worker, `push_subscriptions` table)
 
 ## Database Schema
 
 ```sql
 -- Future-proofed with group_id even though MVP has one group
 groups (id UUID PK, name, created_at)
-users (id UUID PK, group_id FK, display_name, avatar_color, phone, sort_order, last_active_at, created_at)
+users (id UUID PK, group_id FK, display_name, avatar_color, sort_order, push_reminders_enabled, last_active_at, created_at)
+push_subscriptions (id UUID PK, user_id FK, endpoint TEXT UNIQUE, p256dh TEXT, auth TEXT, created_at)
 categories (id UUID PK, group_id FK, name, icon, sort_order, UNIQUE(group_id, name))
 goals (id UUID PK, user_id FK, category_id FK, period_key CHAR(7), title, target_value NUMERIC, unit, frequency_type CHECK(total|daily|weekly), is_archived BOOL, created_at, updated_at)
 progress_entries (id UUID PK, goal_id FK CASCADE, value NUMERIC, logged_for DATE, note, logged_unit VARCHAR(50), logged_value NUMERIC, created_at, updated_at)
@@ -78,7 +79,7 @@ Mobile-first: BottomNav on mobile, full-width cards, fullScreen dialogs on small
 Goals/
 ├── docker-compose.yml              # 3 services with healthchecks, env-var config, restart policies
 ├── docker-compose.sandbox.yml      # Override: points server at goals_sandbox DB + sets SANDBOX=true
-├── .env.example                    # All required + optional vars (DB_PASSWORD, APP_PORT, Twilio)
+├── .env.example                    # All required + optional vars (DB_PASSWORD, APP_PORT, VAPID_*)
 ├── dev.sh                          # Local development setup script (start|sandbox|stop|reset|...)
 ├── client/                     (Vite + React + MUI)
 │   ├── src/
@@ -107,7 +108,7 @@ Goals/
 │   │   ├── services/
 │   │   │   ├── dashboardService.ts   (aggregation + frequency math)
 │   │   │   ├── frequencyCalc.ts      (pure function; 56 tests)
-│   │   │   └── smsService.ts         (Twilio stub; real sending gated by TWILIO_ENABLED)
+│   │   │   └── pushService.ts        (Web Push via web-push + VAPID)
 │   │   └── middleware/         (errorHandler, validate)
 │   ├── seed.ts                 (1 group, 6 users, 8 categories)
 │   └── Dockerfile              (multi-stage; copies migrations SQL into dist/)
@@ -130,6 +131,7 @@ Goals/
 | 8 | Polish (loading/empty/error states, UI) | ✅ Done |
 | 9 | Sandbox mode (isolated goals_sandbox DB) | ✅ Done |
 | 10 | Unit system overhaul — multi-unit logging, conversion constants, Professional Learning category | ✅ Done |
+| 11 | PWA push notifications — replaced Twilio SMS with Web Push (VAPID, service worker, push_subscriptions, DuckDNS + Caddy HTTPS) | ✅ Done |
 
 ## Verification
 
@@ -159,7 +161,7 @@ Goals/
 ## Future Enhancements (V2+)
 
 - Authentication (OAuth/email+password)
-- ~~Twilio SMS notifications~~ ✅ Implemented — `smsService.ts`, `reminderService.ts`, node-cron scheduler
+- ~~Twilio SMS notifications~~ ✅ Replaced by PWA Web Push — `pushService.ts`, `reminderService.ts`, node-cron scheduler, `push_subscriptions` table
 - ~~Streak tracking~~ ✅ Implemented — `streakService.ts`, driven by `daily_completions` table; retroactive repair supported
 - ~~Day-focused navigation~~ ✅ Implemented — day navigator in TopAppBar replaces month picker; dashboard filtered by selected day; "Done for today" button
 - Admin role (unlock/edit goals, manage users)
@@ -167,5 +169,5 @@ Goals/
 - Pacing suggestions
 - Category leaderboards, shared group goals
 - Calendar view, charts, GitHub-style heatmaps
-- PWA support for offline + push notifications
+- PWA offline support (push notifications already implemented)
 - Code-split MUI bundle (currently ~581 kB, addressable with lazy imports)

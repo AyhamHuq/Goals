@@ -12,11 +12,10 @@ export interface User {
   group_id: string;
   display_name: string;
   avatar_color: string;
-  phone: string | null;
   sort_order: number;
   last_active_at: Date | null;
   created_at: Date;
-  sms_reminders_enabled: boolean;
+  push_reminders_enabled: boolean;
   reminder_hour: number;
 }
 

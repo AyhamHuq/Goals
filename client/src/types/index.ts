@@ -10,7 +10,7 @@ export interface User {
   sort_order: number;
   last_active_at: string | null;
   created_at: string;
-  sms_reminders_enabled: boolean;
+  push_reminders_enabled: boolean;
   reminder_hour: number;
 }
 

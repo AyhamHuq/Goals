@@ -10,14 +10,14 @@ CREATE TABLE IF NOT EXISTS groups (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id        UUID NOT NULL REFERENCES groups(id),
-    display_name    VARCHAR(100) NOT NULL,
-    avatar_color    VARCHAR(7) NOT NULL DEFAULT '#1976d2',
-    phone           VARCHAR(20),
-    sort_order      SMALLINT NOT NULL DEFAULT 0,
-    last_active_at  TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id              UUID NOT NULL REFERENCES groups(id),
+    display_name          VARCHAR(100) NOT NULL,
+    avatar_color          VARCHAR(7) NOT NULL DEFAULT '#1976d2',
+    sort_order            SMALLINT NOT NULL DEFAULT 0,
+    last_active_at        TIMESTAMPTZ,
+    push_reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id);
 
@@ -60,6 +60,16 @@ CREATE TABLE IF NOT EXISTS progress_entries (
 );
 CREATE INDEX IF NOT EXISTS idx_progress_goal ON progress_entries(goal_id);
 CREATE INDEX IF NOT EXISTS idx_progress_logged_for ON progress_entries(goal_id, logged_for);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint    TEXT NOT NULL UNIQUE,
+    p256dh      TEXT NOT NULL,
+    auth        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
 
 -- Internal migration tracking (managed by migrate.ts, not part of app schema)
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -172,6 +182,29 @@ GET /api/history/:period_key?user_id=<uuid>
 → PersonalDashboardResponse  (same shape as personal dashboard, read-only intent)
 ```
 
+### Push Notifications
+
+```
+GET /api/push/vapid-public-key
+→ { publicKey: string }
+
+POST /api/push/subscribe
+Body: { user_id: uuid, endpoint: string, p256dh: string, auth: string }
+→ 201
+
+DELETE /api/push/unsubscribe
+Body: { endpoint: string }
+→ 204
+```
+
+### User Preferences
+
+```
+PATCH /api/users/:id/preferences
+Body: { push_reminders_enabled?: boolean, reminder_hour?: number }
+→ 200 User
+```
+
 ## API Response Shapes
 
 ### PersonalDashboardResponse
@@ -252,26 +285,38 @@ Computed on-the-fly from `progress_entries` — no cached column needed. Uses a 
 
 **Grace period:** if a user logged yesterday but not yet today, the streak is still alive. It only resets when the last logged day is 2+ days ago. The streak is included in the `PersonalDashboardResponse` as `streak: number` and displayed as a flame chip in the stats bar.
 
-## SMS / Reminder Service
+## Push Notification / Reminder Service
 
-### SMS (`server/src/services/smsService.ts`)
+### Web Push (`server/src/services/pushService.ts`)
 
-Exports `sendSms({ to, message }): Promise<SmsResult>`.
-
-- When `TWILIO_ENABLED=false` (default): logs to console, returns `{ sid: null }`
-- When `TWILIO_ENABLED=true`: sends via Twilio API, returns `{ sid: string }`
+Sends Web Push notifications via the `web-push` npm package using VAPID authentication. Requires `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_EMAIL` env vars.
 
 ### Daily Reminders (`server/src/services/reminderService.ts`)
 
-Exports `sendDailyReminders(currentHour, today)`. Runs via `node-cron` every hour at `:00` (server/src/index.ts). For each user with `sms_reminders_enabled=true`, `phone` set, and `reminder_hour` matching the current hour:
+Exports `sendDailyReminders(currentHour, today)`. Runs via `node-cron` every hour at `:00` (server/src/index.ts). For each user with `push_reminders_enabled=true` and `reminder_hour` matching the current hour:
 1. Skips if they already logged progress today
 2. Skips if `notification_log` already has an entry for today (idempotent)
 3. Computes their streak, composes an encouraging message
-4. Sends SMS and records in `notification_log`
+4. Sends a Web Push notification to all of the user's subscribed devices and records in `notification_log`
 
 ### User Preferences API
 
-`PATCH /api/users/:id/preferences` — update `phone`, `sms_reminders_enabled`, `reminder_hour`.
+`PATCH /api/users/:id/preferences` — update `push_reminders_enabled`, `reminder_hour`.
+
+### Push Subscription API
+
+```
+GET /api/push/vapid-public-key
+→ { publicKey: string }
+
+POST /api/push/subscribe
+Body: { user_id: uuid, endpoint: string, p256dh: string, auth: string }
+→ 201
+
+DELETE /api/push/unsubscribe
+Body: { endpoint: string }
+→ 204
+```
 
 ### Daily Completions Table
 
@@ -293,10 +338,9 @@ Users mark a day as done via **`POST /api/daily-completions`**. This drives the 
 CREATE TABLE notification_log (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id           UUID NOT NULL REFERENCES users(id),
-    notification_type VARCHAR(20) NOT NULL,   -- 'sms_reminder'
+    notification_type VARCHAR(20) NOT NULL,   -- 'push_reminder'
     sent_for          DATE NOT NULL,
     sent_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    twilio_sid        VARCHAR(50),
     UNIQUE(user_id, notification_type, sent_for)  -- prevents double-sends
 );
 ```
@@ -323,7 +367,7 @@ Host (Hetzner CX23)
 
 The `-p` (project name) flag gives each stack its own namespaced containers, network, and volume (`goals-prod_pgdata` vs `goals-staging_pgdata`), so the two environments are fully isolated at the data layer.
 
-A `Caddyfile` is included in the repo for a future upgrade to HTTPS with a custom domain (see Roadmap V2). It is not used in the current deployment.
+A `Caddyfile` is included in the repo and used in production for HTTPS termination via Caddy + DuckDNS (host-level, not inside Docker). Caddy reverse-proxies the DuckDNS subdomain to the prod client port (3100) and the staging subdomain to port 3101. HTTPS is required for the Web Push API and the PWA service worker.
 
 ### Per-Environment Docker Compose
 
@@ -368,13 +412,11 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 |----------|---------|-------------|
 | `DB_PASSWORD` | `goals` | PostgreSQL password |
 | `NODE_ENV` | `production` | Node environment (`production` / `staging`) |
-| `TWILIO_ENABLED` | `false` | Set `true` to enable real SMS sending |
-| `TWILIO_ACCOUNT_SID` | — | Twilio Account SID |
-| `TWILIO_AUTH_TOKEN` | — | Twilio Auth Token |
-| `TWILIO_FROM_NUMBER` | — | Twilio sender number (E.164 format, e.g. +15550000000) |
+| `VAPID_PUBLIC_KEY` | — | VAPID public key for Web Push (generate with `npx web-push generate-vapid-keys`) |
+| `VAPID_PRIVATE_KEY` | — | VAPID private key for Web Push |
+| `VAPID_EMAIL` | — | Contact email sent with Web Push requests (e.g. `mailto:you@example.com`) |
+| `APP_PORT` | `3100` | Host port the client container binds to (overridden per environment in compose override files) |
 | `TZ` | `America/New_York` | Server timezone for reminder scheduling |
-
-`APP_PORT` is no longer used — ports are pinned in the prod/staging override files.
 
 ## Key Dependencies
 
@@ -383,7 +425,7 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 - pg (node-postgres)
 - zod (validation)
 - date-fns (date math in frequency calc)
-- twilio (SMS sending)
+- web-push (Web Push / VAPID notifications)
 - node-cron (hourly reminder scheduler)
 - typescript, tsx (dev), ts-jest + jest + supertest (tests)
 
@@ -394,4 +436,5 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 - axios
 - date-fns
 - Inter font (Google Fonts CDN)
+- PWA manifest + service worker (`public/sw.js`) for push notification support
 - typescript, vite, vitest (dev)

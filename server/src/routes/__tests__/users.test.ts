@@ -52,26 +52,26 @@ describe('PATCH /api/users/:id/touch', () => {
 });
 
 describe('PATCH /api/users/:id/preferences', () => {
-  it('updates sms_reminders_enabled and returns updated user', async () => {
-    const updated = { id: 'uuid-1', sms_reminders_enabled: true, reminder_hour: 20, phone: null };
+  it('updates push_reminders_enabled and returns updated user', async () => {
+    const updated = { id: 'uuid-1', push_reminders_enabled: true, reminder_hour: 20 };
     mockQuery.mockResolvedValueOnce({ rows: [updated] });
 
     const res = await request(app)
       .patch('/api/users/uuid-1/preferences')
-      .send({ sms_reminders_enabled: true });
+      .send({ push_reminders_enabled: true });
     expect(res.status).toBe(200);
-    expect(res.body.sms_reminders_enabled).toBe(true);
+    expect(res.body.push_reminders_enabled).toBe(true);
   });
 
-  it('updates phone number', async () => {
-    const updated = { id: 'uuid-1', phone: '+15551234567', sms_reminders_enabled: false, reminder_hour: 20 };
+  it('updates reminder_hour and returns updated user', async () => {
+    const updated = { id: 'uuid-1', push_reminders_enabled: false, reminder_hour: 9 };
     mockQuery.mockResolvedValueOnce({ rows: [updated] });
 
     const res = await request(app)
       .patch('/api/users/uuid-1/preferences')
-      .send({ phone: '+15551234567' });
+      .send({ reminder_hour: 9 });
     expect(res.status).toBe(200);
-    expect(res.body.phone).toBe('+15551234567');
+    expect(res.body.reminder_hour).toBe(9);
   });
 
   it('validates reminder_hour is 0-23', async () => {
@@ -85,7 +85,7 @@ describe('PATCH /api/users/:id/preferences', () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     const res = await request(app)
       .patch('/api/users/nonexistent/preferences')
-      .send({ sms_reminders_enabled: true });
+      .send({ push_reminders_enabled: true });
     expect(res.status).toBe(404);
   });
 

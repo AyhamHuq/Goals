@@ -2,8 +2,7 @@ import apiClient from './client';
 import { User } from '../types';
 
 export interface UserPreferences {
-  phone?: string | null;
-  sms_reminders_enabled?: boolean;
+  push_reminders_enabled?: boolean;
   reminder_hour?: number;
 }
 

@@ -17,7 +17,7 @@ async function start() {
     console.log('Database seeded.');
   }
 
-  // Run SMS reminder check every hour at :00
+  // Run push reminder check every hour at :00
   cron.schedule('0 * * * *', async () => {
     const now = new Date();
     const currentHour = now.getHours();

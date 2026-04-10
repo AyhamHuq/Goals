@@ -48,9 +48,25 @@ function MonthCard({
   const barColor: 'success' | 'warning' | 'error' =
     avgPct >= 80 ? 'success' : avgPct >= 50 ? 'warning' : 'error';
 
+  const accentColor = barColor === 'success' ? '#4CAF50' : barColor === 'warning' ? '#FF9800' : '#EF5350';
+
   return (
-    <Card sx={{ borderRadius: 2 }}>
-      <CardActionArea onClick={onClick} sx={{ borderRadius: 2 }}>
+    <Card sx={{
+      borderRadius: 3,
+      overflow: 'hidden',
+      position: 'relative',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+        background: accentColor,
+        borderRadius: '12px 12px 0 0',
+      },
+    }}>
+      <CardActionArea onClick={onClick} sx={{ borderRadius: 3 }}>
         <CardContent>
           <Typography variant="h6" fontWeight={700} gutterBottom>
             {periodKeyToLabel(periodKey)}

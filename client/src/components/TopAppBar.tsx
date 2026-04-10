@@ -40,7 +40,7 @@ export default function TopAppBar() {
 
   return (
     <AppBar position="sticky" elevation={0}>
-      <Toolbar sx={{ gap: 1, minHeight: { xs: 56, sm: 64 } }}>
+      <Toolbar sx={{ gap: 1, minHeight: { xs: 56, sm: 64 }, pt: 'env(safe-area-inset-top, 0px)' }}>
         {/* User avatar — clickable */}
         {selectedUser && (
           <Box>
@@ -122,15 +122,25 @@ export default function TopAppBar() {
         <Box flex={1} />
 
         {/* Day navigator */}
-        <Box display="flex" alignItems="center" gap={0.5}>
-          <IconButton size="small" onClick={goToPreviousDay} sx={{ color: 'text.primary' }}>
-            <ChevronLeftIcon fontSize="small" />
+        <Box display="flex" alignItems="center" gap={0}>
+          <IconButton onClick={goToPreviousDay} sx={{ color: 'text.primary', minWidth: 44, minHeight: 44 }}>
+            <ChevronLeftIcon />
           </IconButton>
 
-          <Typography
-            variant="body2"
-            fontWeight={600}
-            sx={{ fontSize: '0.8rem', minWidth: { xs: 52, sm: 140 }, textAlign: 'center' }}
+          <Button
+            variant="text"
+            onClick={!isToday ? goToToday : undefined}
+            disableRipple={isToday}
+            sx={{
+              color: isToday ? 'text.primary' : 'warning.main',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              minWidth: { xs: 80, sm: 140 },
+              textTransform: 'none',
+              px: 0.5,
+              cursor: isToday ? 'default' : 'pointer',
+              '&:hover': { bgcolor: isToday ? 'transparent' : undefined },
+            }}
           >
             <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
               {formatDayLabel(selectedDay)}
@@ -138,36 +148,15 @@ export default function TopAppBar() {
             <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
               {formatDayLabelShort(selectedDay)}
             </Box>
-          </Typography>
+          </Button>
 
           <IconButton
-            size="small"
             onClick={goToNextDay}
             disabled={isToday}
-            sx={{ color: 'text.primary' }}
+            sx={{ color: 'text.primary', minWidth: 44, minHeight: 44 }}
           >
-            <ChevronRightIcon fontSize="small" />
+            <ChevronRightIcon />
           </IconButton>
-
-          {!isToday && (
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              onClick={goToToday}
-              sx={{
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                px: 1.5,
-                minWidth: 0,
-                display: { xs: 'none', sm: 'flex' },
-                boxShadow: 'none',
-                '&:hover': { boxShadow: 'none' },
-              }}
-            >
-              Back to today
-            </Button>
-          )}
         </Box>
 
         {/* View toggle */}

@@ -265,7 +265,7 @@ function OverviewTab({
                           <Box
                             onClick={() => setDrawer({ goal, userId: user.id })}
                             sx={{
-                              py: 0.75,
+                              py: 1.25,
                               px: 0.5,
                               cursor: 'pointer',
                               borderRadius: 1,
@@ -300,7 +300,7 @@ function OverviewTab({
                               variant="determinate"
                               value={Math.min(goal.percentage, 100)}
                               color={color}
-                              sx={{ height: 5, borderRadius: 4 }}
+                              sx={{ height: 7, borderRadius: 4 }}
                             />
                             <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.3}>
                               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
@@ -320,7 +320,7 @@ function OverviewTab({
                                   ) : (
                                     <HighlightOffIcon sx={{ fontSize: 11, color: colorHexMap.error }} />
                                   )}
-                                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: goal.on_track ? colorHexMap.success : colorHexMap.error, fontWeight: 600 }}>
+                                  <Typography variant="caption" sx={{ fontSize: '0.72rem', color: goal.on_track ? colorHexMap.success : colorHexMap.error, fontWeight: 600 }}>
                                     {goal.on_track ? 'On pace' : 'Behind'}
                                   </Typography>
                                 </Box>
@@ -387,7 +387,7 @@ function ByCategoryTab({
 
   return (
     <>
-      <Stack spacing={3}>
+      <Stack spacing={4}>
         {sections.map((section) => (
           <Box key={section.categoryId ?? '__none__'}>
             {/* Section header */}
@@ -432,10 +432,10 @@ function ByCategoryTab({
                             {/* Avatar */}
                             <Avatar
                               sx={{
-                                width: 32,
-                                height: 32,
+                                width: 36,
+                                height: 36,
                                 bgcolor: user.avatar_color,
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 700,
                                 flexShrink: 0,
                               }}
@@ -471,12 +471,12 @@ function ByCategoryTab({
                           </Box>
 
                           {/* Progress bar row */}
-                          <Box display="flex" alignItems="center" gap={1} mt={0.75} pl={`${22 + 8 + 32 + 10}px`}>
+                          <Box display="flex" alignItems="center" gap={1} mt={0.75} pl={`${22 + 8 + 36 + 10}px`}>
                             <LinearProgress
                               variant="determinate"
                               value={Math.min(goal.percentage, 100)}
                               color={color}
-                              sx={{ flex: 1, height: 6, borderRadius: 4 }}
+                              sx={{ flex: 1, height: 8, borderRadius: 4 }}
                             />
                             {showPacing && (
                               <Box display="flex" alignItems="center" gap={0.4} flexShrink={0}>

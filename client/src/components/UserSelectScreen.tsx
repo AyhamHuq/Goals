@@ -34,7 +34,7 @@ function AvatarCard({
         alignItems: 'center',
         gap: 0.75,
         cursor: 'pointer',
-        p: 1,
+        p: 1.5,
         borderRadius: 2,
         transition: 'background 0.15s',
         '&:hover': { bgcolor: 'rgba(92,107,192,0.06)' },
@@ -102,6 +102,8 @@ export default function UserSelectScreen() {
       sx={{
         background: 'linear-gradient(160deg, #EEF0FF 0%, #F5F6FA 100%)',
         p: 2,
+        pt: 'max(16px, calc(16px + env(safe-area-inset-top, 0px)))',
+        pb: 'max(16px, calc(16px + env(safe-area-inset-bottom, 0px)))',
       }}
     >
       <Card

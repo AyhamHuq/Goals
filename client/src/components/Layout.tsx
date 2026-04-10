@@ -22,7 +22,9 @@ export default function Layout() {
         sx={{
           flex: 1,
           p: { xs: 1.5, sm: 3 },
-          pb: isMobile ? '72px' : undefined,
+          pb: isMobile ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : undefined,
+          pl: { xs: 'max(12px, calc(12px + env(safe-area-inset-left, 0px)))', sm: 3 },
+          pr: { xs: 'max(12px, calc(12px + env(safe-area-inset-right, 0px)))', sm: 3 },
         }}
       >
         <Outlet />

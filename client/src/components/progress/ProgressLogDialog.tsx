@@ -98,7 +98,19 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} fullScreen={fullScreen} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullScreen={fullScreen}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: fullScreen ? {
+          pt: 'env(safe-area-inset-top, 0px)',
+          pb: 'env(safe-area-inset-bottom, 0px)',
+        } : {},
+      }}
+    >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Typography
           variant="h6"
@@ -126,7 +138,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
                 error={!!error}
                 helperText={error}
                 autoFocus
-                inputProps={{ min: 0, step: 'any', style: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 700 } }}
+                inputProps={{ min: 0, step: 'any', style: { textAlign: 'center', fontSize: '2rem', fontWeight: 700 } }}
                 fullWidth
                 size="medium"
               />
@@ -189,6 +201,7 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
                 ? <CircularProgress size={16} color="inherit" />
                 : <CheckIcon />
             }
+            sx={{ py: 1.5, fontSize: '1rem', borderRadius: 2.5, minHeight: 52 }}
           >
             {goal.goal_type === 'measurement' ? 'Log Measurement' : 'Log Progress'}
           </Button>

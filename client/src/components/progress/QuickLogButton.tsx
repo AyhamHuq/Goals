@@ -15,11 +15,11 @@ export default function QuickLogButton({ goal, onLog }: QuickLogButtonProps) {
   return (
     <>
       <Button
-        variant="outlined"
-        size="small"
+        variant="contained"
+        size="medium"
         startIcon={<AddIcon />}
-        onClick={() => setOpen(true)}
-        sx={{ mt: 1 }}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        sx={{ mt: 1.5, py: 1, minHeight: 44, fontWeight: 600, borderRadius: 2 }}
       >
         {goal.goal_type === 'measurement' ? 'Log Measurement' : 'Log Progress'}
       </Button>

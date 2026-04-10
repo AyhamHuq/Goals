@@ -180,7 +180,19 @@ export default function GoalFormDialog({
   const freqDescription = frequencyOptions.find((o) => o.value === form.frequency_type)?.description ?? '';
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen={fullScreen} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: fullScreen ? {
+          pt: 'env(safe-area-inset-top, 0px)',
+          pb: 'env(safe-area-inset-bottom, 0px)',
+        } : {},
+      }}
+    >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Typography variant="h6">{goal ? 'Edit Goal' : 'New Goal'}</Typography>
         <IconButton size="small" onClick={onClose} disabled={isPending}>
@@ -189,7 +201,7 @@ export default function GoalFormDialog({
       </DialogTitle>
 
       <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+        <Stack spacing={3} sx={{ mt: 0.5 }}>
 
           {/* Category — required, drives goal_type/unit/frequency defaults */}
           <FormControl fullWidth size="small" error={!!errors.category_id}>
@@ -304,6 +316,7 @@ export default function GoalFormDialog({
             size="large"
             disabled={isPending}
             startIcon={isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+            sx={{ py: 1.5, fontSize: '1rem', borderRadius: 2.5, minHeight: 52 }}
           >
             {goal ? 'Save Changes' : 'Create Goal'}
           </Button>

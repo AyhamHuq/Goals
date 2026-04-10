@@ -34,10 +34,41 @@ export default function BottomNav({ onAddGoal }: BottomNavProps) {
   };
 
   return (
-    <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100 }} elevation={3}>
-      <BottomNavigation value={value} onChange={handleChange} showLabels>
+    <Paper
+      sx={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1100,
+        pb: 'env(safe-area-inset-bottom, 0px)',
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.04)',
+      }}
+      elevation={0}
+    >
+      <BottomNavigation
+        value={value}
+        onChange={handleChange}
+        showLabels
+        sx={{
+          height: 56,
+          '& .MuiBottomNavigationAction-root': {
+            minWidth: 60,
+            py: 1,
+          },
+          '& .MuiBottomNavigationAction-root.Mui-selected': {
+            color: 'primary.main',
+          },
+        }}
+      >
         <BottomNavigationAction label="Dashboard" icon={<HomeIcon />} />
-        <BottomNavigationAction label="Add Goal" icon={<AddCircleIcon />} />
+        <BottomNavigationAction
+          label="Add Goal"
+          icon={<AddCircleIcon sx={{ fontSize: 30, color: 'primary.main' }} />}
+          sx={{ '& .MuiBottomNavigationAction-label': { color: 'primary.main', fontWeight: 600 } }}
+        />
         <BottomNavigationAction label="History" icon={<HistoryIcon />} />
       </BottomNavigation>
     </Paper>

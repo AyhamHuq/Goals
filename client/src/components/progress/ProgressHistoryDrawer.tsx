@@ -120,9 +120,10 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         onClose={onClose}
         PaperProps={{
           sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            maxHeight: '70vh',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxHeight: '85vh',
+            pb: 'env(safe-area-inset-bottom, 0px)',
           },
         }}
       >
@@ -184,7 +185,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             <List dense sx={{ overflow: 'auto' }}>
               {entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <ListItem disableGutters alignItems="flex-start" sx={{ py: 1 }}>
+                  <ListItem disableGutters alignItems="flex-start" sx={{ py: 1.5 }}>
                     {editingId === entry.id ? (
                       <Box width="100%">
                         <EditRow
@@ -223,13 +224,14 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                         {/* Actions on right */}
                         {!readOnly && (
                           <Box display="flex" gap={0.25}>
-                            <IconButton size="small" onClick={() => setEditingId(entry.id)}>
+                            <IconButton size="small" onClick={() => setEditingId(entry.id)} sx={{ minWidth: 40, minHeight: 40 }}>
                               <EditIcon fontSize="small" />
                             </IconButton>
                             <IconButton
                               size="small"
                               color="error"
                               onClick={() => setDeleteConfirmId(entry.id)}
+                              sx={{ minWidth: 40, minHeight: 40 }}
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>

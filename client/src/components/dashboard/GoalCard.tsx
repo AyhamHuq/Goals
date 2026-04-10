@@ -3,24 +3,28 @@ import {
   Card,
   CardContent,
   Typography,
-  LinearProgress,
   Box,
-  Chip,
+  LinearProgress,
+  useTheme,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import { GoalWithProgress } from '../../types';
 import { formatPercentage, getMonthlyDisplay, getMonthlyLabel, fmtValue } from '../../utils/frequency';
 import { getUnitsForCategory, convertUnit } from '../../constants/unitConversions';
 import { fmtValue as fmtV } from '../../utils/frequency';
 import QuickLogButton from '../progress/QuickLogButton';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
+import CircularProgressRing from '../shared/CircularProgressRing';
+import { PACING_HEX, PACING_GRADIENT } from '../../theme/tokens';
+import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
 
 interface GoalCardProps {
   goal: GoalWithProgress & { id: string };
   readOnly?: boolean;
   selectedDay?: string;
+  animationDelay?: number;
 }
 
 type PacingColor = 'success' | 'warning' | 'error' | 'primary';
@@ -35,14 +39,15 @@ function getProgressColor(goal: GoalWithProgress): PacingColor {
   return 'error';
 }
 
-const colorHexMap: Record<PacingColor, string> = {
-  success: '#66BB6A',
-  warning: '#FFA726',
-  error:   '#EF5350',
-  primary: '#5C6BC0',
-};
+function getCategoryIcon(categoryName: string | undefined): string | undefined {
+  if (!categoryName) return undefined;
+  const template = GOAL_TEMPLATES.find((t) => t.label.toLowerCase() === categoryName.toLowerCase());
+  return template?.icon;
+}
 
-export default function GoalCard({ goal, readOnly = false, selectedDay }: GoalCardProps) {
+export default function GoalCard({ goal, readOnly = false, selectedDay, animationDelay = 0 }: GoalCardProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState(goal.unit);
   const unitOptions = goal.category ? getUnitsForCategory(goal.category.name) : [];
@@ -52,12 +57,16 @@ export default function GoalCard({ goal, readOnly = false, selectedDay }: GoalCa
   }, [goal.unit]);
 
   const color = getProgressColor(goal);
-  const hex = colorHexMap[color];
+  const hex = PACING_HEX[color];
+  const gradient = PACING_GRADIENT[color];
   const barValue = Math.min(goal.percentage, 100);
   const showPacing = goal.on_track !== null;
+  const categoryIcon = getCategoryIcon(goal.category?.name);
 
   const baseLabel = getMonthlyLabel(goal);
+  // Include category prefix in label (tested behavior)
   const derivedLabel = goal.category ? `${goal.category.name}: ${baseLabel}` : baseLabel;
+  const goalTitle = goal.title ? goal.title : undefined;
 
   const monthly = getMonthlyDisplay(goal);
   const approx = monthly.isApprox ? '~' : '';
@@ -85,89 +94,156 @@ export default function GoalCard({ goal, readOnly = false, selectedDay }: GoalCa
     ? convertUnit(monthly.expected, goal.unit, displayUnit, categoryName)
     : monthly.expected;
 
+  // Track color in light/dark
+  const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+
   return (
     <>
       <Card
+        onClick={() => setDrawerOpen(true)}
         sx={{
           cursor: 'pointer',
-          opacity: readOnly ? 0.85 : 1,
-          borderRadius: 3,
+          opacity: readOnly ? 0.88 : 1,
+          borderRadius: '20px',
           overflow: 'hidden',
           position: 'relative',
-          transition: 'box-shadow 0.2s ease, transform 0.15s ease',
-          '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
-          '&:active': { transform: 'scale(0.98)', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' },
-          '&::before': {
-            content: '""',
+          animation: `fadeSlideUp 350ms ease-out ${animationDelay}ms both`,
+          '@keyframes fadeSlideUp': {
+            from: { opacity: 0, transform: 'translateY(14px)' },
+            to: { opacity: 1, transform: 'translateY(0)' },
+          },
+          // Subtle status-tinted background
+          background: isDark
+            ? `linear-gradient(135deg, ${alpha(hex, 0.06)} 0%, transparent 55%), ${theme.palette.background.paper}`
+            : `linear-gradient(135deg, ${alpha(hex, 0.04)} 0%, transparent 55%), ${theme.palette.background.paper}`,
+          '&:hover': {
+            boxShadow: `0 4px 16px ${alpha(hex, isDark ? 0.25 : 0.15)}, 0 12px 32px rgba(0,0,0,${isDark ? 0.3 : 0.07})`,
+            transform: 'translateY(-1px)',
+          },
+          '&:active': {
+            transform: 'scale(0.975) translateY(0)',
+            transition: 'transform 0.12s cubic-bezier(0.2,0.8,0.2,1)',
+          },
+          transition: 'box-shadow 0.25s ease, transform 0.18s ease',
+        }}
+      >
+        {/* Left accent stripe */}
+        <Box
+          sx={{
             position: 'absolute',
             top: 0,
             left: 0,
-            right: 0,
-            height: 4,
-            background: hex,
-            borderRadius: '12px 12px 0 0',
-          },
-        }}
-        onClick={() => setDrawerOpen(true)}
-      >
-        <CardContent sx={{ pb: '14px !important', pt: 2.5, minHeight: 160, display: 'flex', flexDirection: 'column' }}>
-          {/* Header: label + on-track badge */}
-          <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={goal.title ? 0.25 : 1}>
-            <Typography
-              variant="subtitle1"
-              fontWeight={700}
-              sx={{ lineHeight: 1.3, flex: 1, mr: 1 }}
-            >
-              {derivedLabel}
-            </Typography>
-            {showPacing && (
-              <Chip
-                icon={goal.on_track
-                  ? <CheckCircleOutlineIcon sx={{ fontSize: 13, '&&': { ml: '6px' } }} />
-                  : <HighlightOffIcon sx={{ fontSize: 13, '&&': { ml: '6px' } }} />
-                }
-                label={goal.on_track ? 'On track' : 'Behind'}
-                size="small"
+            bottom: 0,
+            width: 4,
+            background: gradient,
+            borderRadius: '20px 0 0 20px',
+          }}
+        />
+
+        <CardContent
+          sx={{
+            pb: '14px !important',
+            pt: 2,
+            pl: 2.5,
+            pr: 2,
+            minHeight: 140,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Header row: category icon + label + ring */}
+          <Box display="flex" alignItems="flex-start" gap={1.25} mb={1}>
+            {/* Category icon */}
+            {categoryIcon && (
+              <Box
                 sx={{
-                  bgcolor: alpha(goal.on_track ? colorHexMap.success : colorHexMap.error, 0.1),
-                  color: goal.on_track ? colorHexMap.success : colorHexMap.error,
-                  fontWeight: 600,
-                  fontSize: '0.68rem',
-                  height: 22,
-                  borderRadius: '11px',
+                  fontSize: 22,
+                  lineHeight: 1,
                   flexShrink: 0,
+                  mt: 0.15,
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.12))',
                 }}
-              />
+              >
+                {categoryIcon}
+              </Box>
             )}
+
+            {/* Label + subtitle */}
+            <Box flex={1} minWidth={0} mr={1}>
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                sx={{
+                  lineHeight: 1.3,
+                  letterSpacing: '-0.01em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {derivedLabel}
+              </Typography>
+              {goalTitle && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mt: 0.2, lineHeight: 1.35 }}
+                >
+                  {goalTitle}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Circular progress ring */}
+            <CircularProgressRing
+              value={barValue}
+              size={62}
+              strokeWidth={5}
+              color={hex}
+              trackColor={trackColor}
+            >
+              <Typography
+                sx={{
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  color: hex,
+                  lineHeight: 1,
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {formatPercentage(goal.percentage)}
+              </Typography>
+            </CircularProgressRing>
           </Box>
 
-          {/* Note */}
-          {goal.title && (
-            <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-              {goal.title}
-            </Typography>
+          {/* Pacing status */}
+          {showPacing && (
+            <Box display="flex" alignItems="center" gap={0.5} mb={0.75}>
+              {goal.on_track ? (
+                <CheckCircleRoundedIcon sx={{ fontSize: 13, color: hex }} />
+              ) : (
+                <WarningRoundedIcon sx={{ fontSize: 13, color: hex }} />
+              )}
+              <Typography
+                variant="caption"
+                sx={{ color: hex, fontWeight: 700, fontSize: '0.7rem' }}
+              >
+                {goal.on_track ? 'On track' : 'Behind'}
+              </Typography>
+            </Box>
           )}
 
-          {/* Progress bar + large percentage */}
-          <Box display="flex" alignItems="center" gap={2} mb={0.75}>
-            <LinearProgress
-              variant="determinate"
-              value={barValue}
-              color={color}
-              sx={{ flex: 1, height: 10, borderRadius: 6 }}
-            />
-            <Typography
-              fontWeight={800}
-              sx={{ color: hex, fontSize: '1.05rem', minWidth: 46, textAlign: 'right', lineHeight: 1 }}
-            >
-              {formatPercentage(goal.percentage)}
-            </Typography>
-          </Box>
-
-          {/* Current/target values */}
-          <Typography variant="caption" color="text.secondary">
+          {/* Values text */}
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mb: 1, fontSize: '0.72rem', lineHeight: 1.45 }}
+          >
             {goal.goal_type === 'measurement'
-              ? `${fmtValue(displayCurrentValue)} ${displayUnit} → ${fmtValue(displayTargetValue)} ${displayUnit}${
+              ? `${fmtValue(displayCurrentValue)} → ${fmtValue(displayTargetValue)} ${displayUnit}${
                   displayExpected !== null ? ` · ${fmtValue(displayExpected)} expected` : ''
                 }`
               : `${fmtValue(displayMonthly.current)} / ${approx}${fmtValue(displayMonthly.monthlyTarget)} ${displayMonthly.unit}${
@@ -176,39 +252,70 @@ export default function GoalCard({ goal, readOnly = false, selectedDay }: GoalCa
             }
           </Typography>
 
-          {/* Unit toggle */}
+          {/* Unit toggle chip */}
           {unitOptions.length > 1 && (
-            <Box display="flex" mt={0.75}>
-              <Chip
-                label={displayUnit}
-                size="small"
-                variant="outlined"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const idx = unitOptions.indexOf(displayUnit);
-                  setDisplayUnit(unitOptions[(idx + 1) % unitOptions.length]);
-                }}
-                sx={{ fontSize: '0.65rem', height: 18, cursor: 'pointer' }}
-              />
+            <Box
+              component="span"
+              onClick={(e) => {
+                e.stopPropagation();
+                const idx = unitOptions.indexOf(displayUnit);
+                setDisplayUnit(unitOptions[(idx + 1) % unitOptions.length]);
+              }}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                mb: 0.75,
+                px: 1,
+                py: 0.25,
+                borderRadius: '100px',
+                border: '1px solid',
+                borderColor: 'divider',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                color: 'text.secondary',
+                cursor: 'pointer',
+                width: 'fit-content',
+                '&:hover': { borderColor: 'text.secondary' },
+              }}
+            >
+              {displayUnit} ↕
             </Box>
           )}
 
-          {/* Spacer pushes button row to bottom */}
-          <Box flex={1} />
+          {/* Thin progress bar at bottom */}
+          <LinearProgress
+            variant="determinate"
+            value={barValue}
+            sx={{
+              height: 3,
+              borderRadius: 4,
+              mb: 1.25,
+              bgcolor: trackColor,
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: gradient,
+              },
+            }}
+          />
 
           {/* Bottom row: day entries + log button */}
-          <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
             {goal.day_entries && goal.day_entries.length > 0 && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                 {selectedDay ? 'Today' : 'Logged'}:{' '}
-                {goal.goal_type === 'accumulation'
-                  ? `+${fmtV(goal.day_entries.reduce((s, e) => s + Number(e.value), 0))} ${goal.unit}`
-                  : `${fmtV(Number(goal.day_entries[0].value))} ${goal.unit}`}
+                <Box component="span" sx={{ fontWeight: 700, color: hex }}>
+                  {goal.goal_type === 'accumulation'
+                    ? `+${fmtV(goal.day_entries.reduce((s, e) => s + Number(e.value), 0))} ${goal.unit}`
+                    : `${fmtV(Number(goal.day_entries[0].value))} ${goal.unit}`}
+                </Box>
               </Typography>
             )}
             {!readOnly && (
-              <Box onClick={(e) => e.stopPropagation()} ml={goal.day_entries && goal.day_entries.length > 0 ? 'auto' : undefined}>
-                <QuickLogButton goal={goal} />
+              <Box
+                onClick={(e) => e.stopPropagation()}
+                ml={goal.day_entries && goal.day_entries.length > 0 ? 'auto' : undefined}
+              >
+                <QuickLogButton goal={goal} accentColor={hex} accentGradient={gradient} />
               </Box>
             )}
           </Box>

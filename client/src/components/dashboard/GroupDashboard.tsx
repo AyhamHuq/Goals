@@ -3,23 +3,21 @@ import {
   Box,
   Typography,
   Avatar,
-  LinearProgress,
-  Chip,
   Skeleton,
   Stack,
   Card,
   CardContent,
-  Tabs,
-  Tab,
   Collapse,
   Divider,
+  LinearProgress,
+  useTheme,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import HighlightOffIcon from '@mui/icons-material/HighlightOff';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 import { useGroupDashboard } from '../../hooks/useDashboard';
 import { usePeriodContext } from '../../context/PeriodContext';
 import { useUserContext } from '../../context/UserContext';
@@ -27,18 +25,11 @@ import { GoalWithProgress, UserGoalSummary } from '../../types';
 import { formatPercentage, getMonthlyLabel, getMonthlyDisplay, fmtValue } from '../../utils/frequency';
 import { periodKeyToLabel, periodProportionalThreshold } from '../../utils/dates';
 import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
+import { PACING_HEX } from '../../theme/tokens';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
-
-// ── Color helpers (mirrors GoalCard logic) ────────────────────────────────────
+import CircularProgressRing from '../shared/CircularProgressRing';
 
 type PacingColor = 'success' | 'warning' | 'error' | 'primary';
-
-const colorHexMap: Record<PacingColor, string> = {
-  success: '#66BB6A',
-  warning: '#FFA726',
-  error:   '#EF5350',
-  primary: '#5C6BC0',
-};
 
 function getProgressColor(goal: GoalWithProgress): PacingColor {
   if (goal.on_track === null) return 'primary';
@@ -50,19 +41,15 @@ function getProgressColor(goal: GoalWithProgress): PacingColor {
   return 'error';
 }
 
-function goalDerivedLabel(goal: GoalWithProgress, includeCategory = false): string {
-  const base = getMonthlyLabel(goal);
-  return includeCategory && goal.category ? `${goal.category.name}: ${base}` : base;
+function goalDerivedLabel(goal: GoalWithProgress): string {
+  return getMonthlyLabel(goal);
 }
-
-// ── Category view data model ──────────────────────────────────────────────────
 
 interface CategoryEntry {
   user: { id: string; display_name: string; avatar_color: string };
   goal: GoalWithProgress;
   rank: number;
 }
-
 interface CategorySection {
   categoryId: string | null;
   categoryName: string;
@@ -78,9 +65,7 @@ function buildCategoryView(users: UserGoalSummary[]): CategorySection[] {
       const key = goal.category?.id ?? '__none__';
       const name = goal.category?.name ?? 'Uncategorized';
       if (!map.has(key)) {
-        const template = GOAL_TEMPLATES.find(
-          (t) => t.label.toLowerCase() === name.toLowerCase(),
-        );
+        const template = GOAL_TEMPLATES.find((t) => t.label.toLowerCase() === name.toLowerCase());
         map.set(key, {
           categoryId: goal.category?.id ?? null,
           categoryName: name,
@@ -92,7 +77,6 @@ function buildCategoryView(users: UserGoalSummary[]): CategorySection[] {
     }
   }
 
-  // Sort entries by percentage desc, assign ranks
   const sections: CategorySection[] = [];
   for (const section of map.values()) {
     section.entries.sort((a, b) => b.goal.percentage - a.goal.percentage);
@@ -104,7 +88,6 @@ function buildCategoryView(users: UserGoalSummary[]): CategorySection[] {
     sections.push({ ...section, entries: ranked });
   }
 
-  // Sort sections alphabetically; uncategorized last
   return sections.sort((a, b) => {
     if (a.categoryId === null) return 1;
     if (b.categoryId === null) return -1;
@@ -112,31 +95,26 @@ function buildCategoryView(users: UserGoalSummary[]): CategorySection[] {
   });
 }
 
-// ── Skeletons ─────────────────────────────────────────────────────────────────
-
-function UserCardSkeleton() {
-  return (
-    <Card sx={{ borderRadius: 2 }}>
-      <CardContent>
-        <Box display="flex" alignItems="center" gap={1.5} mb={1.5}>
-          <Skeleton variant="circular" width={44} height={44} />
-          <Box flex={1}>
-            <Skeleton variant="text" width="40%" height={20} />
-            <Skeleton variant="text" width="60%" height={16} />
-          </Box>
-          <Skeleton variant="text" width={48} height={20} />
-        </Box>
-        <Skeleton variant="rectangular" height={8} sx={{ borderRadius: 6 }} />
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Overview tab (by person) ──────────────────────────────────────────────────
-
 function avgPercentage(goals: GoalWithProgress[]): number {
   if (!goals.length) return 0;
   return goals.reduce((sum, g) => sum + g.percentage, 0) / goals.length;
+}
+
+function SkeletonCard() {
+  return (
+    <Card sx={{ borderRadius: '20px' }}>
+      <CardContent>
+        <Box display="flex" alignItems="center" gap={1.5} mb={1.5}>
+          <Skeleton variant="circular" width={48} height={48} />
+          <Box flex={1}>
+            <Skeleton variant="text" width="45%" height={20} />
+            <Skeleton variant="text" width="65%" height={16} />
+          </Box>
+          <Skeleton variant="circular" width={56} height={56} />
+        </Box>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface DrawerState {
@@ -145,110 +123,128 @@ interface DrawerState {
 }
 
 function OverviewTab({
-  users,
-  isLoading,
-  currentUserId,
-  periodKey,
+  users, isLoading, currentUserId, periodKey,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
   periodKey: string;
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
-  const threshold = periodProportionalThreshold(periodKey);
+  const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
 
   if (isLoading) {
     return (
-      <Stack spacing={2}>
-        {[1, 2, 3, 4].map((i) => <UserCardSkeleton key={i} />)}
+      <Stack spacing={1.75}>
+        {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
       </Stack>
     );
   }
 
-  const hasAnyGoals = users.some((u) => u.goals.length > 0);
-
-  if (!hasAnyGoals) {
+  if (!users.some((u) => u.goals.length > 0)) {
     return (
       <Box py={6} textAlign="center">
-        <Typography color="text.secondary">
-          No one has set goals for this period yet.
-        </Typography>
+        <Typography color="text.secondary" fontWeight={500}>No one has set goals for this period yet.</Typography>
       </Box>
     );
   }
 
   return (
     <>
-      <Stack spacing={2}>
+      <Stack spacing={1.75}>
         {users.map(({ user, goals }) => {
           const avg = avgPercentage(goals);
-          const onTrack = goals.filter(
-            (g) => g.on_track === true || (g.on_track === null && g.percentage >= threshold),
-          ).length;
-          const barColor: 'success' | 'warning' | 'error' =
-            goals.length > 0 && onTrack === goals.length ? 'success' :
-            avg >= 80 ? 'success' : avg >= 50 ? 'warning' : 'error';
+          const avgClamped = Math.min(avg, 100);
           const isChampion = avg >= 80;
           const isExpanded = expandedUserId === user.id;
+          const ringColor = avg >= 80 ? '#00C9A7' : avg >= 50 ? '#FFB830' : '#EF5350';
 
           return (
-            <Card key={user.id} sx={{ borderRadius: 2 }}>
+            <Card key={user.id} sx={{ borderRadius: '20px', overflow: 'hidden' }}>
               <CardContent
-                sx={{ cursor: goals.length > 0 ? 'pointer' : 'default', '&:hover': goals.length > 0 ? { bgcolor: 'action.hover' } : {} }}
+                sx={{
+                  cursor: goals.length > 0 ? 'pointer' : 'default',
+                  transition: 'background 0.15s ease',
+                  '&:hover': goals.length > 0 ? { bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)' } : {},
+                  pb: isExpanded ? 1 : '16px !important',
+                }}
                 onClick={() => goals.length > 0 && setExpandedUserId(isExpanded ? null : user.id)}
               >
-                <Box display="flex" alignItems="center" gap={1.5} mb={1.25}>
-                  <Avatar
-                    sx={{
-                      width: 44,
-                      height: 44,
-                      bgcolor: user.avatar_color,
-                      fontSize: 18,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {user.display_name[0].toUpperCase()}
-                  </Avatar>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  {/* Avatar with champion badge */}
+                  <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                    <Avatar
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        bgcolor: user.avatar_color,
+                        fontSize: 17,
+                        fontWeight: 800,
+                        boxShadow: isChampion ? `0 4px 14px ${user.avatar_color}66` : undefined,
+                      }}
+                    >
+                      {user.display_name[0].toUpperCase()}
+                    </Avatar>
+                    {isChampion && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -4,
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          bgcolor: '#FFB830',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(255,184,48,0.5)',
+                          border: `2px solid ${isDark ? '#1A1A24' : '#fff'}`,
+                        }}
+                      >
+                        <EmojiEventsRoundedIcon sx={{ fontSize: 10, color: '#fff' }} />
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* Name + subtitle */}
                   <Box flex={1} minWidth={0}>
-                    <Box display="flex" alignItems="center" gap={0.75}>
-                      <Typography fontWeight={700} noWrap>
-                        {user.display_name}
-                      </Typography>
-                      {isChampion && (
-                        <EmojiEventsIcon sx={{ fontSize: 16, color: '#FFA726' }} />
-                      )}
-                    </Box>
+                    <Typography fontWeight={700} noWrap sx={{ letterSpacing: '-0.01em' }}>
+                      {user.display_name}
+                    </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {goals.length === 0
                         ? 'No goals this period'
-                        : `${onTrack}/${goals.length} goals on track`}
+                        : `${goals.filter(g => g.on_track === true).length}/${goals.length} on track`}
                     </Typography>
                   </Box>
-                  <Box display="flex" alignItems="center" gap={0.5}>
-                    <Chip
-                      label={formatPercentage(avg)}
-                      size="small"
-                      color={barColor}
-                      sx={{ fontWeight: 700, minWidth: 52 }}
-                    />
-                    {goals.length > 0 && (
-                      isExpanded
-                        ? <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        : <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    )}
-                  </Box>
-                </Box>
 
-                {goals.length > 0 && (
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(avg, 100)}
-                    color={barColor}
-                    sx={{ height: 8, borderRadius: 6 }}
-                  />
-                )}
+                  {/* Circular progress ring */}
+                  {goals.length > 0 && (
+                    <CircularProgressRing
+                      value={avgClamped}
+                      size={56}
+                      strokeWidth={4.5}
+                      color={ringColor}
+                      trackColor={trackColor}
+                    >
+                      <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: ringColor, lineHeight: 1 }}>
+                        {Math.round(avg)}%
+                      </Typography>
+                    </CircularProgressRing>
+                  )}
+
+                  {goals.length > 0 && (
+                    <Box sx={{ color: 'text.secondary', ml: 0.5 }}>
+                      {isExpanded
+                        ? <ExpandLessRoundedIcon sx={{ fontSize: 20 }} />
+                        : <ExpandMoreRoundedIcon sx={{ fontSize: 20 }} />}
+                    </Box>
+                  )}
+                </Box>
               </CardContent>
 
               {/* Expanded goal list */}
@@ -258,7 +254,7 @@ function OverviewTab({
                   <Stack spacing={0}>
                     {goals.map((goal, idx) => {
                       const color = getProgressColor(goal);
-                      const hex = colorHexMap[color];
+                      const hex = PACING_HEX[color];
                       return (
                         <Box key={goal.id}>
                           {idx > 0 && <Divider sx={{ my: 0.75 }} />}
@@ -268,14 +264,14 @@ function OverviewTab({
                               py: 1.25,
                               px: 0.5,
                               cursor: 'pointer',
-                              borderRadius: 1,
+                              borderRadius: 2,
                               '&:hover': { bgcolor: 'action.hover' },
                             }}
                           >
-                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.4}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
                               <Box minWidth={0} flex={1} mr={1}>
-                                <Typography variant="body2" fontWeight={600} noWrap>
-                                  {goalDerivedLabel(goal, true)}
+                                <Typography variant="body2" fontWeight={700} noWrap sx={{ letterSpacing: '-0.01em' }}>
+                                  {goalDerivedLabel(goal)}
                                 </Typography>
                                 {goal.title && (
                                   <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -283,44 +279,45 @@ function OverviewTab({
                                   </Typography>
                                 )}
                               </Box>
-                              <Chip
-                                label={formatPercentage(goal.percentage)}
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha(hex, 0.12),
-                                  color: hex,
-                                  fontWeight: 700,
-                                  fontSize: '0.65rem',
-                                  height: 20,
-                                  flexShrink: 0,
-                                }}
-                              />
+                              <Typography
+                                sx={{ fontSize: '0.78rem', fontWeight: 800, color: hex, flexShrink: 0 }}
+                              >
+                                {formatPercentage(goal.percentage)}
+                              </Typography>
                             </Box>
                             <LinearProgress
                               variant="determinate"
                               value={Math.min(goal.percentage, 100)}
-                              color={color}
-                              sx={{ height: 7, borderRadius: 4 }}
+                              sx={{
+                                height: 4,
+                                borderRadius: 4,
+                                bgcolor: trackColor,
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 4,
+                                  bgcolor: hex,
+                                },
+                              }}
                             />
-                            <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.3}>
-                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                            <Box display="flex" justifyContent="space-between" mt={0.4}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem' }}>
                                 {(() => {
                                   const m = getMonthlyDisplay(goal);
                                   const ap = m.isApprox ? '~' : '';
                                   if (goal.goal_type === 'measurement') {
-                                    return `${fmtValue(goal.current_value)} → ${goal.target_value} ${goal.unit}${m.expected !== null ? ` · ${fmtValue(m.expected)} exp` : ''}`;
+                                    return `${fmtValue(goal.current_value)} → ${goal.target_value} ${goal.unit}`;
                                   }
-                                  return `${fmtValue(m.current)} / ${ap}${fmtValue(m.monthlyTarget)} ${m.unit}${m.expected !== null ? ` · ${fmtValue(m.expected)} exp` : ''}`;
+                                  return `${fmtValue(m.current)} / ${ap}${fmtValue(m.monthlyTarget)} ${m.unit}`;
                                 })()}
                               </Typography>
                               {goal.on_track !== null && (
-                                <Box display="flex" alignItems="center" gap={0.3}>
-                                  {goal.on_track ? (
-                                    <CheckCircleOutlineIcon sx={{ fontSize: 11, color: colorHexMap.success }} />
-                                  ) : (
-                                    <HighlightOffIcon sx={{ fontSize: 11, color: colorHexMap.error }} />
-                                  )}
-                                  <Typography variant="caption" sx={{ fontSize: '0.72rem', color: goal.on_track ? colorHexMap.success : colorHexMap.error, fontWeight: 600 }}>
+                                <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
+                                  {goal.on_track
+                                    ? <CheckCircleRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.success }} />
+                                    : <WarningRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.error }} />}
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
+                                  >
                                     {goal.on_track ? 'On pace' : 'Behind'}
                                   </Typography>
                                 </Box>
@@ -350,25 +347,24 @@ function OverviewTab({
   );
 }
 
-// ── By Category tab ───────────────────────────────────────────────────────────
-
 const rankColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 
 function ByCategoryTab({
-  users,
-  isLoading,
-  currentUserId,
+  users, isLoading, currentUserId,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
 
   if (isLoading) {
     return (
       <Stack spacing={2}>
-        {[1, 2].map((i) => <UserCardSkeleton key={i} />)}
+        {[1, 2].map((i) => <SkeletonCard key={i} />)}
       </Stack>
     );
   }
@@ -378,52 +374,53 @@ function ByCategoryTab({
   if (sections.length === 0) {
     return (
       <Box py={6} textAlign="center">
-        <Typography color="text.secondary">
-          No goals to compare yet.
-        </Typography>
+        <Typography color="text.secondary" fontWeight={500}>No goals to compare yet.</Typography>
       </Box>
     );
   }
 
   return (
     <>
-      <Stack spacing={4}>
+      <Stack spacing={3.5}>
         {sections.map((section) => (
           <Box key={section.categoryId ?? '__none__'}>
             {/* Section header */}
-            <Typography variant="subtitle1" fontWeight={700} mb={1.25}>
-              {section.categoryIcon} {section.categoryName}
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+              <Box sx={{ fontSize: 24, lineHeight: 1 }}>{section.categoryIcon}</Box>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+                {section.categoryName}
+              </Typography>
+            </Box>
 
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent sx={{ pb: '12px !important' }}>
-                <Stack spacing={1.5}>
+            <Card sx={{ borderRadius: '20px' }}>
+              <CardContent sx={{ pb: '16px !important' }}>
+                <Stack spacing={1.75}>
                   {section.entries.map(({ user, goal, rank }, idx) => {
                     const color = getProgressColor(goal);
-                    const hex = colorHexMap[color];
+                    const hex = PACING_HEX[color];
                     const showPacing = goal.on_track !== null;
+                    const rankColor = rankColors[rank];
 
                     return (
                       <Box key={`${user.id}-${goal.id}`}>
                         {idx > 0 && (
-                          <Box
-                            sx={{ height: '1px', bgcolor: 'divider', mb: 1.5 }}
-                          />
+                          <Box sx={{ height: '1px', bgcolor: 'divider', mb: 1.75 }} />
                         )}
                         <Box
                           onClick={() => setDrawer({ goal, userId: user.id })}
-                          sx={{ cursor: 'pointer', borderRadius: 1, '&:hover': { bgcolor: 'action.hover' }, p: 0.5, mx: -0.5 }}
+                          sx={{ cursor: 'pointer', borderRadius: 2, '&:hover': { bgcolor: 'action.hover' }, p: 0.5, mx: -0.5 }}
                         >
-                          <Box display="flex" alignItems="center" gap={1.25}>
-                            {/* Rank badge */}
+                          <Box display="flex" alignItems="center" gap={1.25} mb={0.75}>
+                            {/* Rank */}
                             <Typography
                               variant="caption"
-                              fontWeight={700}
+                              fontWeight={800}
                               sx={{
                                 width: 22,
                                 textAlign: 'center',
-                                color: rankColors[rank] ?? 'text.secondary',
+                                color: rankColor ?? 'text.secondary',
                                 flexShrink: 0,
+                                fontSize: '0.78rem',
                               }}
                             >
                               #{rank}
@@ -432,69 +429,62 @@ function ByCategoryTab({
                             {/* Avatar */}
                             <Avatar
                               sx={{
-                                width: 36,
-                                height: 36,
+                                width: 34,
+                                height: 34,
                                 bgcolor: user.avatar_color,
-                                fontSize: 14,
-                                fontWeight: 700,
+                                fontSize: 13,
+                                fontWeight: 800,
                                 flexShrink: 0,
                               }}
                             >
                               {user.display_name[0].toUpperCase()}
                             </Avatar>
 
-                            {/* Name + goal label */}
+                            {/* Info */}
                             <Box flex={1} minWidth={0}>
-                              <Typography variant="body2" fontWeight={700} noWrap>
+                              <Typography variant="body2" fontWeight={700} noWrap sx={{ letterSpacing: '-0.01em' }}>
                                 {user.display_name}
                               </Typography>
                               <Typography variant="caption" color="text.secondary" noWrap display="block">
                                 {goalDerivedLabel(goal)}
-                                {goal.title ? ` (${goal.title})` : ''}
                               </Typography>
                             </Box>
 
-                            {/* Percentage chip */}
-                            <Chip
-                              label={formatPercentage(goal.percentage)}
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(hex, 0.12),
-                                color: hex,
-                                fontWeight: 700,
-                                fontSize: '0.7rem',
-                                height: 22,
-                                minWidth: 44,
-                                flexShrink: 0,
-                              }}
-                            />
+                            {/* Percentage */}
+                            <Typography
+                              sx={{ fontSize: '0.82rem', fontWeight: 800, color: hex, flexShrink: 0 }}
+                            >
+                              {formatPercentage(goal.percentage)}
+                            </Typography>
                           </Box>
 
-                          {/* Progress bar row */}
-                          <Box display="flex" alignItems="center" gap={1} mt={0.75} pl={`${22 + 8 + 36 + 10}px`}>
+                          {/* Progress bar */}
+                          <Box display="flex" alignItems="center" gap={1} pl={`${22 + 8 + 34 + 10}px`}>
                             <LinearProgress
                               variant="determinate"
                               value={Math.min(goal.percentage, 100)}
-                              color={color}
-                              sx={{ flex: 1, height: 8, borderRadius: 4 }}
+                              sx={{
+                                flex: 1,
+                                height: 5,
+                                borderRadius: 4,
+                                bgcolor: trackColor,
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 4,
+                                  bgcolor: hex,
+                                },
+                              }}
                             />
                             {showPacing && (
-                              <Box display="flex" alignItems="center" gap={0.4} flexShrink={0}>
-                                {goal.on_track ? (
-                                  <>
-                                    <CheckCircleOutlineIcon sx={{ fontSize: 12, color: colorHexMap.success }} />
-                                    <Typography variant="caption" sx={{ color: colorHexMap.success, fontWeight: 600, fontSize: '0.65rem' }}>
-                                      On pace
-                                    </Typography>
-                                  </>
-                                ) : (
-                                  <>
-                                    <HighlightOffIcon sx={{ fontSize: 12, color: colorHexMap.error }} />
-                                    <Typography variant="caption" sx={{ color: colorHexMap.error, fontWeight: 600, fontSize: '0.65rem' }}>
-                                      Behind
-                                    </Typography>
-                                  </>
-                                )}
+                              <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
+                                {goal.on_track
+                                  ? <CheckCircleRoundedIcon sx={{ fontSize: 12, color: PACING_HEX.success }} />
+                                  : <WarningRoundedIcon sx={{ fontSize: 12, color: PACING_HEX.error }} />}
+                                <Typography
+                                  variant="caption"
+                                  sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
+                                >
+                                  {goal.on_track ? 'On pace' : 'Behind'}
+                                </Typography>
                               </Box>
                             )}
                           </Box>
@@ -521,11 +511,11 @@ function ByCategoryTab({
   );
 }
 
-// ── Root component ────────────────────────────────────────────────────────────
-
 export default function GroupDashboard() {
   const { selectedUser } = useUserContext();
   const { periodKey, selectedDay } = usePeriodContext();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const groupId = selectedUser?.group_id;
   const [tab, setTab] = useState(0);
 
@@ -534,7 +524,7 @@ export default function GroupDashboard() {
   if (isError) {
     return (
       <Box py={4} textAlign="center">
-        <Typography color="error">Failed to load group dashboard.</Typography>
+        <Typography color="error" fontWeight={600}>Failed to load group dashboard.</Typography>
       </Box>
     );
   }
@@ -544,21 +534,59 @@ export default function GroupDashboard() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} mb={0.5}>
+      <Typography
+        variant="h5"
+        fontWeight={800}
+        mb={0.5}
+        sx={{ letterSpacing: '-0.02em' }}
+      >
         Family Overview
       </Typography>
-      <Typography variant="body2" color="text.secondary" mb={2}>
+      <Typography variant="body2" color="text.secondary" mb={2.5}>
         {periodKeyToLabel(periodKey)}
       </Typography>
 
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        sx={{ mb: 2.5, borderBottom: 1, borderColor: 'divider' }}
+      {/* Segmented control */}
+      <Box
+        display="flex"
+        sx={{
+          bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+          borderRadius: '100px',
+          p: '3px',
+          mb: 2.5,
+          width: 'fit-content',
+        }}
       >
-        <Tab label="Overview" />
-        <Tab label="By Category" />
-      </Tabs>
+        {(['Overview', 'By Category'] as const).map((label, idx) => {
+          const active = tab === idx;
+          return (
+            <Box
+              key={label}
+              onClick={() => setTab(idx)}
+              sx={{
+                px: 2.5,
+                py: 0.75,
+                borderRadius: '100px',
+                fontSize: '0.82rem',
+                fontWeight: active ? 700 : 500,
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                color: active ? (isDark ? '#fff' : '#1A1A2E') : 'text.secondary',
+                bgcolor: active
+                  ? (isDark ? 'rgba(108,92,231,0.9)' : '#fff')
+                  : 'transparent',
+                boxShadow: active
+                  ? (isDark ? '0 2px 8px rgba(108,92,231,0.4)' : '0 1px 4px rgba(0,0,0,0.1)')
+                  : 'none',
+                '&:active': { transform: 'scale(0.95)' },
+              }}
+            >
+              {label}
+            </Box>
+          );
+        })}
+      </Box>
 
       {tab === 0 && (
         <OverviewTab

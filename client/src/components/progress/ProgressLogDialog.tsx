@@ -7,7 +7,6 @@ import {
   Typography,
   CircularProgress,
   Box,
-  MenuItem,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -133,43 +132,54 @@ export default function ProgressLogDialog({ open, onClose, goal }: ProgressLogDi
         </IconButton>
       </DialogTitle>
 
-      <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-          {/* Large value input */}
-          <Box>
-            <Box display="flex" gap={1.25} alignItems="flex-start">
-              <TextField
-                label={goal.goal_type === 'measurement' ? `Current ${logUnit}` : `Value (${logUnit})`}
-                type="number"
-                value={value}
-                onChange={(e) => { setValue(e.target.value); if (error) setError(''); }}
-                error={!!error}
-                helperText={error}
-                autoFocus
-                inputProps={{
-                  min: 0,
-                  step: 'any',
-                  style: { textAlign: 'center', fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em' },
-                }}
-                fullWidth
-                size="medium"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '16px' } }}
-              />
-              {availableUnits.length > 1 && (
-                <TextField
-                  select
-                  label="Unit"
-                  value={logUnit}
-                  onChange={(e) => setLogUnit(e.target.value)}
-                  size="medium"
-                  sx={{ minWidth: 100, '& .MuiOutlinedInput-root': { borderRadius: '16px' } }}
+      <DialogContent sx={{ pt: '12px !important' }}>
+        <Stack spacing={2.5}>
+          {/* Unit pills — above value input when multiple units available */}
+          {availableUnits.length > 1 && (
+            <Box display="flex" gap={1} flexWrap="wrap">
+              {availableUnits.map((u) => (
+                <Box
+                  key={u}
+                  onClick={() => setLogUnit(u)}
+                  sx={{
+                    px: 1.75,
+                    py: 0.6,
+                    borderRadius: '100px',
+                    border: '1.5px solid',
+                    borderColor: logUnit === u ? 'primary.main' : 'divider',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                    fontWeight: logUnit === u ? 700 : 500,
+                    color: logUnit === u ? 'primary.main' : 'text.secondary',
+                    transition: 'all 0.15s ease',
+                    '&:active': { transform: 'scale(0.93)' },
+                  }}
                 >
-                  {availableUnits.map((u) => (
-                    <MenuItem key={u} value={u}>{u}</MenuItem>
-                  ))}
-                </TextField>
-              )}
+                  {u}
+                </Box>
+              ))}
             </Box>
+          )}
+
+          {/* Full-width value input */}
+          <Box>
+            <TextField
+              label={goal.goal_type === 'measurement' ? `Current ${logUnit}` : `Value (${logUnit})`}
+              type="number"
+              value={value}
+              onChange={(e) => { setValue(e.target.value); if (error) setError(''); }}
+              error={!!error}
+              helperText={error}
+              autoFocus
+              inputProps={{
+                min: 0,
+                step: 'any',
+                style: { textAlign: 'center', fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', paddingTop: 18, paddingBottom: 18 },
+              }}
+              fullWidth
+              size="medium"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '16px' } }}
+            />
 
             {/* Unit conversion helper */}
             {logUnit !== goal.unit && value && !isNaN(parseFloat(value)) && parseFloat(value) > 0 && (

@@ -9,7 +9,6 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { keyframes } from '../theme/animations';
 import { useUserContext } from '../context/UserContext';
 import { touchUser } from '../api/users';
 import { User } from '../types';

@@ -12,7 +12,6 @@ import {
   LinearProgress,
   useTheme,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
@@ -23,7 +22,7 @@ import { usePeriodContext } from '../../context/PeriodContext';
 import { useUserContext } from '../../context/UserContext';
 import { GoalWithProgress, UserGoalSummary } from '../../types';
 import { formatPercentage, getMonthlyLabel, getMonthlyDisplay, fmtValue } from '../../utils/frequency';
-import { periodKeyToLabel, periodProportionalThreshold } from '../../utils/dates';
+import { periodKeyToLabel } from '../../utils/dates';
 import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
 import { PACING_HEX } from '../../theme/tokens';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
@@ -123,7 +122,7 @@ interface DrawerState {
 }
 
 function OverviewTab({
-  users, isLoading, currentUserId, periodKey,
+  users, isLoading, currentUserId, periodKey: _periodKey,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;

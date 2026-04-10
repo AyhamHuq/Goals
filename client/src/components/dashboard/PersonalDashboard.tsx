@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
@@ -21,13 +20,12 @@ import { getHours } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { usePeriodContext } from '../../context/PeriodContext';
 import { usePersonalDashboard } from '../../hooks/useDashboard';
-import { formatDayLabel, periodKeyToLabel } from '../../utils/dates';
+import { formatDayLabel } from '../../utils/dates';
 import GoalCard from './GoalCard';
 import GoalFormDialog from '../goals/GoalFormDialog';
 import NotificationSettings from '../NotificationSettings';
 import { useMarkDayComplete, useUnmarkDayComplete } from '../../hooks/useDailyCompletions';
 import Celebration from '../shared/Celebration';
-import { staggerDelay } from '../../theme/animations';
 
 function greeting(): string {
   const h = getHours(new Date());

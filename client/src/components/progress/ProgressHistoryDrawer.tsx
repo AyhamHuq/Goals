@@ -31,9 +31,6 @@ import { formatLoggedFor } from '../../utils/dates';
 import { getMonthlyLabel } from '../../utils/frequency';
 import GoalFormDialog from '../goals/GoalFormDialog';
 import Sparkline from '../shared/Sparkline';
-import { PACING_HEX } from '../../theme/tokens';
-
-type PacingColor = 'success' | 'warning' | 'error' | 'primary';
 
 interface ProgressHistoryDrawerProps {
   open: boolean;

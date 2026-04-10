@@ -14,10 +14,8 @@ import IconButton from '@mui/material/IconButton';
 import { format } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { useHistoryPeriods, useHistoryDetail } from '../../hooks/useHistory';
-import { periodKeyToLabel } from '../../utils/dates';
 import ArchivedMonthDetail from './ArchivedMonthDetail';
 import CircularProgressRing from '../shared/CircularProgressRing';
-import { staggerDelay } from '../../theme/animations';
 
 function MonthCardSkeleton() {
   return (

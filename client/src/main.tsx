@@ -2,10 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
-import theme from './theme';
+import { AppThemeProvider } from './context/ThemeContext';
 import { UserProvider } from './context/UserContext';
 import { PeriodProvider } from './context/PeriodContext';
 import { ToastProvider } from './components/Toast';
@@ -26,8 +24,7 @@ registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <AppThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <UserProvider>
@@ -42,6 +39,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           </UserProvider>
         </BrowserRouter>
       </QueryClientProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   </React.StrictMode>
 );

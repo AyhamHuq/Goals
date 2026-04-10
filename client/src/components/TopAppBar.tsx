@@ -5,132 +5,214 @@ import {
   Avatar,
   Typography,
   Box,
-  Tabs,
-  Tab,
   Button,
   IconButton,
-  Popover,
+  Drawer,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Divider,
+  useTheme,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserContext } from '../context/UserContext';
 import { usePeriodContext } from '../context/PeriodContext';
+import { useThemeMode } from '../context/ThemeContext';
 import { formatDayLabel, formatDayLabelShort } from '../utils/dates';
 
 export default function TopAppBar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
   const { selectedUser } = useUserContext();
   const { selectedDay, isToday, goToToday, goToPreviousDay, goToNextDay } = usePeriodContext();
+  const { mode, setMode } = useThemeMode();
 
-  const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
 
   const currentTab = location.pathname === '/group' ? 1 : 0;
-
-  const handleTabChange = (_: React.SyntheticEvent, val: number) => {
-    navigate(val === 0 ? '/dashboard' : '/group');
-  };
+  const isDark = theme.palette.mode === 'dark';
 
   return (
     <AppBar position="sticky" elevation={0}>
-      <Toolbar sx={{ gap: 1, minHeight: { xs: 56, sm: 64 } }}>
-        {/* User avatar — clickable */}
+      <Toolbar
+        sx={{
+          gap: 0.5,
+          minHeight: { xs: 58, sm: 64 },
+          pt: 'env(safe-area-inset-top, 0px)',
+          px: { xs: 1.5, sm: 2.5 },
+        }}
+      >
+        {/* User avatar */}
         {selectedUser && (
           <Box>
             <Avatar
               sx={{
-                width: 34,
-                height: 34,
+                width: 36,
+                height: 36,
                 bgcolor: selectedUser.avatar_color,
                 fontSize: 14,
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
-                border: '2px solid',
-                borderColor: 'divider',
-                transition: 'opacity 0.15s',
-                '&:hover': { opacity: 0.85 },
+                boxShadow: `0 0 0 2.5px ${selectedUser.avatar_color}55, 0 2px 8px ${selectedUser.avatar_color}44`,
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                '&:hover': {
+                  transform: 'scale(1.07)',
+                  boxShadow: `0 0 0 3px ${selectedUser.avatar_color}66, 0 4px 12px ${selectedUser.avatar_color}55`,
+                },
+                '&:active': { transform: 'scale(0.94)' },
               }}
-              onClick={(e) => setUserAnchor(e.currentTarget)}
+              onClick={() => setUserDrawerOpen(true)}
             >
               {selectedUser.display_name[0].toUpperCase()}
             </Avatar>
 
-            {/* User popover */}
-            <Popover
-              open={Boolean(userAnchor)}
-              anchorEl={userAnchor}
-              onClose={() => setUserAnchor(null)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            {/* User settings bottom drawer */}
+            <Drawer
+              anchor="bottom"
+              open={userDrawerOpen}
+              onClose={() => setUserDrawerOpen(false)}
               PaperProps={{
                 sx: {
-                  borderRadius: 2,
-                  minWidth: 180,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                  borderTopLeftRadius: 24,
+                  borderTopRightRadius: 24,
+                  pb: 'env(safe-area-inset-bottom, 0px)',
                 },
               }}
             >
+              <Box display="flex" justifyContent="center" pt={1.25} pb={0.5}>
+                <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
+              </Box>
               <Box px={2} py={1.5}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                  Signed in as
-                </Typography>
-                <Typography variant="body2" fontWeight={700}>
-                  {selectedUser.display_name}
-                </Typography>
+                <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
+                  <Avatar
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      bgcolor: selectedUser.avatar_color,
+                      fontSize: 18,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {selectedUser.display_name[0].toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {selectedUser.display_name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Active user
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
               <Divider />
-              <List disablePadding dense>
+              {/* Theme selector */}
+              <Box px={2} py={1.5}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                  Appearance
+                </Typography>
+                <Box display="flex" gap={1} mt={1}>
+                  {(['light', 'system', 'dark'] as const).map((m) => {
+                    const icons = {
+                      light: <LightModeIcon sx={{ fontSize: 18 }} />,
+                      system: <SettingsBrightnessIcon sx={{ fontSize: 18 }} />,
+                      dark: <DarkModeIcon sx={{ fontSize: 18 }} />,
+                    };
+                    const labels = { light: 'Light', system: 'System', dark: 'Dark' };
+                    const active = mode === m;
+                    return (
+                      <Button
+                        key={m}
+                        size="small"
+                        variant={active ? 'contained' : 'outlined'}
+                        startIcon={icons[m]}
+                        onClick={() => setMode(m)}
+                        sx={{
+                          flex: 1,
+                          borderRadius: 2.5,
+                          fontSize: '0.75rem',
+                          py: 0.75,
+                          ...(active ? {} : { borderColor: 'divider', color: 'text.secondary' }),
+                        }}
+                      >
+                        {labels[m]}
+                      </Button>
+                    );
+                  })}
+                </Box>
+              </Box>
+              <Divider />
+              <List disablePadding sx={{ px: 1, py: 0.75 }}>
                 <ListItemButton
                   onClick={() => {
-                    setUserAnchor(null);
+                    setUserDrawerOpen(false);
                     navigate('/');
                   }}
-                  sx={{ py: 1 }}
+                  sx={{ borderRadius: 2, py: 1.25 }}
                 >
                   <ListItemIcon sx={{ minWidth: 36 }}>
                     <SwitchAccountIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary="Switch user" />
+                  <ListItemText primary="Switch user" primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
                 </ListItemButton>
               </List>
-            </Popover>
+              <Box sx={{ height: 8 }} />
+            </Drawer>
           </Box>
-        )}
-
-        {/* Name — hidden on xs */}
-        {selectedUser && (
-          <Typography
-            variant="body2"
-            fontWeight={600}
-            noWrap
-            sx={{
-              display: { xs: 'none', sm: 'block' },
-              color: 'text.primary',
-            }}
-          >
-            {selectedUser.display_name}
-          </Typography>
         )}
 
         <Box flex={1} />
 
-        {/* Day navigator */}
-        <Box display="flex" alignItems="center" gap={0.5}>
-          <IconButton size="small" onClick={goToPreviousDay} sx={{ color: 'text.primary' }}>
-            <ChevronLeftIcon fontSize="small" />
+        {/* Day navigator — pill style */}
+        <Box
+          display="flex"
+          alignItems="center"
+          sx={{
+            bgcolor: isToday
+              ? (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)')
+              : (isDark ? 'rgba(255,184,48,0.15)' : 'rgba(255,184,48,0.12)'),
+            borderRadius: '100px',
+            border: isToday ? 'none' : '1.5px solid rgba(255,184,48,0.4)',
+            px: 0.25,
+            transition: 'background 0.2s ease, border 0.2s ease',
+          }}
+        >
+          <IconButton
+            onClick={goToPreviousDay}
+            size="small"
+            sx={{
+              color: isToday ? 'text.secondary' : 'warning.main',
+              minWidth: 36,
+              minHeight: 36,
+              borderRadius: '50%',
+            }}
+          >
+            <ChevronLeftIcon sx={{ fontSize: 20 }} />
           </IconButton>
 
-          <Typography
-            variant="body2"
-            fontWeight={600}
-            sx={{ fontSize: '0.8rem', minWidth: { xs: 52, sm: 140 }, textAlign: 'center' }}
+          <Button
+            variant="text"
+            onClick={!isToday ? goToToday : undefined}
+            disableRipple={isToday}
+            sx={{
+              color: isToday ? 'text.primary' : 'warning.main',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              minWidth: { xs: 74, sm: 130 },
+              textTransform: 'none',
+              px: 0.25,
+              py: 0,
+              cursor: isToday ? 'default' : 'pointer',
+              '&:hover': { bgcolor: 'transparent' },
+            }}
           >
             <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
               {formatDayLabel(selectedDay)}
@@ -138,67 +220,65 @@ export default function TopAppBar() {
             <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
               {formatDayLabelShort(selectedDay)}
             </Box>
-          </Typography>
+          </Button>
 
           <IconButton
-            size="small"
             onClick={goToNextDay}
             disabled={isToday}
-            sx={{ color: 'text.primary' }}
+            size="small"
+            sx={{
+              color: isToday ? 'text.disabled' : 'text.secondary',
+              minWidth: 36,
+              minHeight: 36,
+              borderRadius: '50%',
+            }}
           >
-            <ChevronRightIcon fontSize="small" />
+            <ChevronRightIcon sx={{ fontSize: 20 }} />
           </IconButton>
-
-          {!isToday && (
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              onClick={goToToday}
-              sx={{
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                px: 1.5,
-                minWidth: 0,
-                display: { xs: 'none', sm: 'flex' },
-                boxShadow: 'none',
-                '&:hover': { boxShadow: 'none' },
-              }}
-            >
-              Back to today
-            </Button>
-          )}
         </Box>
 
-        {/* View toggle */}
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          textColor="inherit"
-          TabIndicatorProps={{ style: { backgroundColor: '#5C6BC0' } }}
-          sx={{ minHeight: 0 }}
+        <Box flex={1} />
+
+        {/* Segmented control — Personal / Group */}
+        <Box
+          sx={{
+            display: 'flex',
+            bgcolor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+            borderRadius: '100px',
+            p: '3px',
+            gap: 0,
+          }}
         >
-          <Tab
-            label="Personal"
-            sx={{
-              minHeight: 0,
-              py: 1,
-              fontSize: 13,
-              color: 'text.secondary',
-              '&.Mui-selected': { color: 'primary.main' },
-            }}
-          />
-          <Tab
-            label="Group"
-            sx={{
-              minHeight: 0,
-              py: 1,
-              fontSize: 13,
-              color: 'text.secondary',
-              '&.Mui-selected': { color: 'primary.main' },
-            }}
-          />
-        </Tabs>
+          {(['Personal', 'Group'] as const).map((label, idx) => {
+            const active = currentTab === idx;
+            return (
+              <Box
+                key={label}
+                onClick={() => navigate(idx === 0 ? '/dashboard' : '/group')}
+                sx={{
+                  px: { xs: 1.5, sm: 2 },
+                  py: 0.6,
+                  borderRadius: '100px',
+                  fontSize: { xs: '0.72rem', sm: '0.78rem' },
+                  fontWeight: active ? 700 : 500,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                  color: active ? (isDark ? '#fff' : '#1A1A2E') : 'text.secondary',
+                  bgcolor: active
+                    ? (isDark ? 'rgba(108,92,231,0.9)' : '#fff')
+                    : 'transparent',
+                  boxShadow: active
+                    ? (isDark ? '0 2px 8px rgba(108,92,231,0.4)' : '0 1px 4px rgba(0,0,0,0.12)')
+                    : 'none',
+                  '&:active': { transform: 'scale(0.95)' },
+                }}
+              >
+                {label}
+              </Box>
+            );
+          })}
+        </Box>
       </Toolbar>
     </AppBar>
   );

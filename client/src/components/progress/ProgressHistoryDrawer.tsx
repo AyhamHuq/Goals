@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Drawer,
   Box,
   Typography,
   IconButton,
@@ -15,12 +14,15 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Drawer,
+  useTheme,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckIcon from '@mui/icons-material/Check';
-import CancelIcon from '@mui/icons-material/Cancel';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import { alpha } from '@mui/material/styles';
 import { GoalWithProgress, ProgressEntry } from '../../types';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
 import { useDeleteGoal } from '../../hooks/useGoals';
@@ -28,6 +30,7 @@ import { useToast } from '../Toast';
 import { formatLoggedFor } from '../../utils/dates';
 import { getMonthlyLabel } from '../../utils/frequency';
 import GoalFormDialog from '../goals/GoalFormDialog';
+import Sparkline from '../shared/Sparkline';
 
 interface ProgressHistoryDrawerProps {
   open: boolean;
@@ -37,10 +40,7 @@ interface ProgressHistoryDrawerProps {
 }
 
 function EditRow({
-  entry,
-  unit,
-  onSave,
-  onCancel,
+  entry, unit, onSave, onCancel,
 }: {
   entry: ProgressEntry;
   unit: string;
@@ -68,16 +68,18 @@ function EditRow({
         sx={{ flex: 1, minWidth: 120 }}
       />
       <IconButton size="small" color="primary" onClick={() => onSave(entry.id, parseFloat(val), note)}>
-        <CheckIcon fontSize="small" />
+        <CheckRoundedIcon fontSize="small" />
       </IconButton>
       <IconButton size="small" onClick={onCancel}>
-        <CancelIcon fontSize="small" />
+        <CancelRoundedIcon fontSize="small" />
       </IconButton>
     </Stack>
   );
 }
 
 export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false }: ProgressHistoryDrawerProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);
   const updateProgress = useUpdateProgress();
   const deleteProgress = useDeleteProgress();
@@ -91,10 +93,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
   const handleSave = async (id: string, value: number, note: string) => {
     if (isNaN(value) || value <= 0) return;
     try {
-      await updateProgress.mutateAsync({
-        id,
-        data: { value, note: note.trim() || undefined },
-      });
+      await updateProgress.mutateAsync({ id, data: { value, note: note.trim() || undefined } });
       showToast({ message: 'Entry updated!', severity: 'success' });
     } catch {
       showToast({ message: 'Failed to update entry.', severity: 'error' });
@@ -112,6 +111,17 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
     setDeleteConfirmId(null);
   };
 
+  // Sparkline data from entries
+  const sparklineData = entries
+    .slice()
+    .reverse()
+    .map((e) => Number(e.value));
+
+  const goalTitle = (() => {
+    const base = getMonthlyLabel(goal);
+    return goal.category ? `${goal.category.name}: ${base}` : base;
+  })();
+
   return (
     <>
       <Drawer
@@ -120,33 +130,25 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         onClose={onClose}
         PaperProps={{
           sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            maxHeight: '70vh',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: '88vh',
+            pb: 'env(safe-area-inset-bottom, 0px)',
+            backgroundImage: 'none',
           },
         }}
       >
-        {/* Handle bar */}
-        <Box display="flex" justifyContent="center" pt={1} pb={0.5}>
-          <Box
-            sx={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              bgcolor: 'grey.300',
-            }}
-          />
+        {/* Handle */}
+        <Box display="flex" justifyContent="center" pt={1.25} pb={0.5}>
+          <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
         </Box>
 
-        <Box sx={{ px: 2, pb: 2 }}>
+        <Box sx={{ px: 2, pb: 2, overflow: 'auto', flex: 1 }}>
           {/* Header */}
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
+          <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={1.5}>
             <Box flex={1} mr={1} minWidth={0}>
-              <Typography variant="h6" noWrap>
-                {(() => {
-                  const base = getMonthlyLabel(goal);
-                  return goal.category ? `${goal.category.name}: ${base}` : base;
-                })()}
+              <Typography variant="h6" fontWeight={800} noWrap sx={{ letterSpacing: '-0.02em' }}>
+                {goalTitle}
               </Typography>
               {goal.title && (
                 <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -154,21 +156,48 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                 </Typography>
               )}
             </Box>
-            {!readOnly && (
-              <>
-                <IconButton size="small" onClick={() => setEditGoalOpen(true)} aria-label="Edit goal">
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={() => setDeleteGoalConfirm(true)} aria-label="Delete goal">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </>
-            )}
-            <IconButton onClick={onClose} size="small">
-              <CloseIcon />
-            </IconButton>
+            <Box display="flex" gap={0.5}>
+              {!readOnly && (
+                <>
+                  <IconButton size="small" onClick={() => setEditGoalOpen(true)} aria-label="Edit goal" sx={{ color: 'text.secondary' }}>
+                    <EditRoundedIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => setDeleteGoalConfirm(true)} aria-label="Delete goal">
+                    <DeleteRoundedIcon fontSize="small" />
+                  </IconButton>
+                </>
+              )}
+              <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+                <CloseRoundedIcon />
+              </IconButton>
+            </Box>
           </Box>
-          <Divider />
+
+          {/* Sparkline chart */}
+          {sparklineData.length >= 2 && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                borderRadius: '16px',
+                bgcolor: isDark ? alpha('#6C5CE7', 0.08) : alpha('#6C5CE7', 0.05),
+                border: `1px solid ${alpha('#6C5CE7', 0.12)}`,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={0.75} sx={{ textTransform: 'uppercase', letterSpacing: '0.07em', fontSize: '0.62rem' }}>
+                Progress trend
+              </Typography>
+              <Sparkline
+                data={sparklineData}
+                width={280}
+                height={48}
+                color="#6C5CE7"
+                filled
+              />
+            </Box>
+          )}
+
+          <Divider sx={{ mb: 1 }} />
 
           {isLoading ? (
             <Box display="flex" justifyContent="center" py={4}>
@@ -176,7 +205,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             </Box>
           ) : entries.length === 0 ? (
             <Box py={4} textAlign="center">
-              <Typography color="text.secondary" variant="body2">
+              <Typography color="text.secondary" variant="body2" fontWeight={500}>
                 No entries yet — log your first progress above.
               </Typography>
             </Box>
@@ -184,7 +213,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             <List dense sx={{ overflow: 'auto' }}>
               {entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <ListItem disableGutters alignItems="flex-start" sx={{ py: 1 }}>
+                  <ListItem disableGutters alignItems="flex-start" sx={{ py: 1.25 }}>
                     {editingId === entry.id ? (
                       <Box width="100%">
                         <EditRow
@@ -196,13 +225,12 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                       </Box>
                     ) : (
                       <Box display="flex" alignItems="flex-start" width="100%">
-                        {/* Date on left */}
                         <Box flex={1} minWidth={0}>
                           <Box display="flex" alignItems="baseline" gap={1.5}>
-                            <Typography variant="body2" fontWeight={700} sx={{ minWidth: 80 }}>
+                            <Typography variant="body2" fontWeight={700} sx={{ minWidth: 80, letterSpacing: '-0.01em' }}>
                               {formatLoggedFor(entry.logged_for)}
                             </Typography>
-                            <Typography variant="body2" color="text.primary" fontWeight={600}>
+                            <Typography variant="body2" fontWeight={600} sx={{ color: '#6C5CE7' }}>
                               {entry.logged_unit && entry.logged_unit !== goal.unit && entry.logged_value !== null
                                 ? `${entry.logged_value} ${entry.logged_unit} (${entry.value} ${goal.unit})`
                                 : `${entry.value} ${goal.unit}`
@@ -214,24 +242,28 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                               variant="caption"
                               color="text.secondary"
                               display="block"
-                              sx={{ mt: 0.25 }}
+                              sx={{ mt: 0.2 }}
                             >
                               {entry.note}
                             </Typography>
                           )}
                         </Box>
-                        {/* Actions on right */}
                         {!readOnly && (
                           <Box display="flex" gap={0.25}>
-                            <IconButton size="small" onClick={() => setEditingId(entry.id)}>
-                              <EditIcon fontSize="small" />
+                            <IconButton
+                              size="small"
+                              onClick={() => setEditingId(entry.id)}
+                              sx={{ minWidth: 36, minHeight: 36, color: 'text.secondary' }}
+                            >
+                              <EditRoundedIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                             <IconButton
                               size="small"
                               color="error"
                               onClick={() => setDeleteConfirmId(entry.id)}
+                              sx={{ minWidth: 36, minHeight: 36 }}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <DeleteRoundedIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Box>
                         )}
@@ -246,9 +278,9 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         </Box>
       </Drawer>
 
-      {/* Delete entry confirmation dialog */}
+      {/* Delete entry confirm */}
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} maxWidth="xs">
-        <DialogTitle>Delete entry?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Delete entry?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
             This progress entry will be permanently deleted.
@@ -261,13 +293,14 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             variant="contained"
             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             disabled={deleteProgress.isPending}
+            sx={{ borderRadius: 2.5 }}
           >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Edit goal dialog */}
+      {/* Edit goal */}
       {!readOnly && (
         <GoalFormDialog
           open={editGoalOpen}
@@ -292,10 +325,10 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         />
       )}
 
-      {/* Delete goal confirmation dialog */}
+      {/* Delete goal confirm */}
       {!readOnly && (
         <Dialog open={deleteGoalConfirm} onClose={() => setDeleteGoalConfirm(false)} maxWidth="xs">
-          <DialogTitle>Delete goal?</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 800 }}>Delete goal?</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary">
               This goal and all its progress entries will be permanently deleted. This cannot be undone.
@@ -306,6 +339,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
             <Button
               color="error"
               variant="contained"
+              sx={{ borderRadius: 2.5 }}
               onClick={async () => {
                 try {
                   await deleteGoal.mutateAsync(goal.id);

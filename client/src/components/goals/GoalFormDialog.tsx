@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   Button,
   Stack,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
   FormHelperText,
-  useMediaQuery,
-  useTheme,
   IconButton,
   CircularProgress,
   Box,
   Typography,
+  useTheme,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import { alpha } from '@mui/material/styles';
 import { Goal, FrequencyType, GoalType } from '../../types';
 import { useCreateGoal, useUpdateGoal } from '../../hooks/useGoals';
 import { useCategories } from '../../hooks/useCategories';
 import { useUserContext } from '../../context/UserContext';
 import { useToast } from '../Toast';
 import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
+import BottomSheet from '../shared/BottomSheet';
 
 interface GoalFormDialogProps {
   open: boolean;
@@ -56,20 +52,16 @@ const defaultForm: FormState = {
 };
 
 const frequencyOptions: { value: FrequencyType; label: string; description: string }[] = [
-  { value: 'total',  label: 'Monthly total',  description: 'A fixed total for the whole month — paced linearly day by day (e.g. 20 lectures total)' },
-  { value: 'daily',  label: 'Daily target',   description: 'Amount per day — paces against days elapsed (e.g. 1 lecture/day ≈ 30 total in April)' },
-  { value: 'weekly', label: 'Weekly target',  description: 'Amount per week — paces against weeks elapsed (e.g. 3 lectures/week ≈ 15 total in April)' },
+  { value: 'total', label: 'Monthly total', description: 'Fixed total for the whole month' },
+  { value: 'daily', label: 'Daily target', description: 'Amount per day, paced by days elapsed' },
+  { value: 'weekly', label: 'Weekly target', description: 'Amount per week, paced by weeks elapsed' },
 ];
 
 export default function GoalFormDialog({
-  open,
-  onClose,
-  goal,
-  userId,
-  periodKey,
+  open, onClose, goal, userId, periodKey,
 }: GoalFormDialogProps) {
   const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isDark = theme.palette.mode === 'dark';
   const { selectedUser } = useUserContext();
   const { showToast } = useToast();
   const groupId = selectedUser?.group_id;
@@ -81,7 +73,6 @@ export default function GoalFormDialog({
   const [form, setForm] = useState<FormState>(defaultForm);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
-  // Derive template for the currently selected category
   const selectedTemplate = form.category_id
     ? (() => {
         const cat = categories.find((c) => c.id === form.category_id);
@@ -89,9 +80,7 @@ export default function GoalFormDialog({
       })()
     : undefined;
 
-  // Unit options: from template when available, empty array otherwise (free-text fallback)
   const unitOptions: string[] = selectedTemplate?.units ?? [];
-  // If editing and current unit isn't in the list, include it so it remains selectable
   const allUnitOptions =
     unitOptions.length > 0 && form.unit && !unitOptions.includes(form.unit)
       ? [...unitOptions, form.unit]
@@ -135,7 +124,7 @@ export default function GoalFormDialog({
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormState, string>> = {};
-    if (!form.category_id) newErrors.category_id = 'Category is required';
+    if (!form.category_id) newErrors.category_id = 'Select a category';
     if (!form.target_value || isNaN(Number(form.target_value)) || Number(form.target_value) <= 0) {
       newErrors.target_value = 'Enter a positive number';
     }
@@ -177,40 +166,68 @@ export default function GoalFormDialog({
   };
 
   const isPending = createGoal.isPending || updateGoal.isPending;
-  const freqDescription = frequencyOptions.find((o) => o.value === form.frequency_type)?.description ?? '';
 
-  return (
-    <Dialog open={open} onClose={onClose} fullScreen={fullScreen} maxWidth="sm" fullWidth>
+  const content = (
+    <>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Typography variant="h6">{goal ? 'Edit Goal' : 'New Goal'}</Typography>
-        <IconButton size="small" onClick={onClose} disabled={isPending}>
-          <CloseIcon />
+        <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+          {goal ? 'Edit Goal' : 'New Goal'}
+        </Typography>
+        <IconButton size="small" onClick={onClose} disabled={isPending} sx={{ color: 'text.secondary' }}>
+          <CloseRoundedIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-
-          {/* Category — required, drives goal_type/unit/frequency defaults */}
-          <FormControl fullWidth size="small" error={!!errors.category_id}>
-            <InputLabel id="category-label">Category</InputLabel>
-            <Select
-              labelId="category-label"
-              value={form.category_id}
-              label="Category"
-              onChange={(e) => handleCategoryChange(e.target.value)}
+          {/* Category — card grid */}
+          <Box>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.07em', fontSize: '0.65rem', mb: 1, display: 'block' }}>
+              Category {errors.category_id && <Box component="span" sx={{ color: 'error.main' }}>— {errors.category_id}</Box>}
+            </Typography>
+            <Box
+              display="grid"
+              gridTemplateColumns="1fr 1fr"
+              gap={1}
             >
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.icon ? `${cat.icon} ` : ''}{cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.category_id && <FormHelperText>{errors.category_id}</FormHelperText>}
-          </FormControl>
+              {categories.map((cat) => {
+                const template = GOAL_TEMPLATES.find((t) => t.label.toLowerCase() === cat.name.toLowerCase());
+                const isSelected = form.category_id === cat.id;
+                return (
+                  <Box
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    sx={{
+                      px: 1.5,
+                      py: 1.25,
+                      borderRadius: '14px',
+                      border: '1.5px solid',
+                      borderColor: isSelected ? 'primary.main' : 'divider',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      transition: 'border-color 0.15s ease, background 0.15s ease',
+                      bgcolor: isSelected
+                        ? alpha('#6C5CE7', isDark ? 0.15 : 0.08)
+                        : 'transparent',
+                      '&:active': { transform: 'scale(0.97)' },
+                    }}
+                  >
+                    <Box sx={{ fontSize: 20, lineHeight: 1 }}>
+                      {cat.icon ?? template?.icon ?? '🎯'}
+                    </Box>
+                    <Typography variant="body2" fontWeight={isSelected ? 700 : 500} color={isSelected ? 'primary.main' : 'text.primary'} sx={{ letterSpacing: '-0.01em' }}>
+                      {cat.name}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
 
           {/* Target + Unit */}
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={1.5}>
             <TextField
               label="Target"
               type="number"
@@ -222,20 +239,36 @@ export default function GoalFormDialog({
               sx={{ flex: 1 }}
             />
             {allUnitOptions.length > 0 ? (
-              <FormControl size="small" error={!!errors.unit} sx={{ flex: 1 }}>
-                <InputLabel id="unit-label">Unit</InputLabel>
-                <Select
-                  labelId="unit-label"
-                  value={form.unit}
-                  label="Unit"
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                >
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.07em', fontSize: '0.65rem', mb: 0.75, display: 'block' }}>
+                  Unit
+                </Typography>
+                <Box display="flex" flexWrap="wrap" gap={0.75}>
                   {allUnitOptions.map((u) => (
-                    <MenuItem key={u} value={u}>{u}</MenuItem>
+                    <Box
+                      key={u}
+                      onClick={() => setForm((f) => ({ ...f, unit: u }))}
+                      sx={{
+                        px: 1.5,
+                        py: 0.6,
+                        borderRadius: '100px',
+                        border: '1.5px solid',
+                        borderColor: form.unit === u ? 'primary.main' : 'divider',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: form.unit === u ? 700 : 500,
+                        color: form.unit === u ? 'primary.main' : 'text.secondary',
+                        bgcolor: form.unit === u ? alpha('#6C5CE7', isDark ? 0.15 : 0.07) : 'transparent',
+                        transition: 'all 0.15s ease',
+                        '&:active': { transform: 'scale(0.95)' },
+                      }}
+                    >
+                      {u}
+                    </Box>
                   ))}
-                </Select>
-                {errors.unit && <FormHelperText>{errors.unit}</FormHelperText>}
-              </FormControl>
+                </Box>
+                {errors.unit && <FormHelperText error>{errors.unit}</FormHelperText>}
+              </Box>
             ) : (
               <TextField
                 label="Unit"
@@ -249,7 +282,7 @@ export default function GoalFormDialog({
             )}
           </Stack>
 
-          {/* Note — optional */}
+          {/* Note */}
           <TextField
             label="Note (optional)"
             value={form.title}
@@ -259,7 +292,7 @@ export default function GoalFormDialog({
             helperText="Any extra context for this goal"
           />
 
-          {/* Start value — measurement goals only */}
+          {/* Start value — measurement goals */}
           {form.goal_type === 'measurement' && (
             <TextField
               label={`Starting ${form.unit || 'value'} (your current measurement)`}
@@ -273,42 +306,70 @@ export default function GoalFormDialog({
             />
           )}
 
-          {/* Frequency selector — accumulation goals only */}
+          {/* Frequency selector — card chips */}
           {form.goal_type === 'accumulation' && (
-            <FormControl fullWidth size="small">
-              <InputLabel id="freq-label">Frequency</InputLabel>
-              <Select
-                labelId="freq-label"
-                value={form.frequency_type}
-                label="Frequency"
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, frequency_type: e.target.value as FrequencyType }))
-                }
-              >
-                {frequencyOptions.map((o) => (
-                  <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>{freqDescription}</FormHelperText>
-            </FormControl>
+            <Box>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.07em', fontSize: '0.65rem', mb: 1, display: 'block' }}>
+                Frequency
+              </Typography>
+              <Stack spacing={0.75}>
+                {frequencyOptions.map((o) => {
+                  const isSelected = form.frequency_type === o.value;
+                  return (
+                    <Box
+                      key={o.value}
+                      onClick={() => setForm((f) => ({ ...f, frequency_type: o.value }))}
+                      sx={{
+                        px: 1.75,
+                        py: 1.25,
+                        borderRadius: '14px',
+                        border: '1.5px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        bgcolor: isSelected ? alpha('#6C5CE7', isDark ? 0.15 : 0.07) : 'transparent',
+                        '&:active': { transform: 'scale(0.98)' },
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        fontWeight={isSelected ? 700 : 600}
+                        color={isSelected ? 'primary.main' : 'text.primary'}
+                        sx={{ letterSpacing: '-0.01em' }}
+                      >
+                        {o.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {o.description}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
           )}
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2.5 }}>
-        <Box width="100%">
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            fullWidth
-            size="large"
-            disabled={isPending}
-            startIcon={isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
-          >
-            {goal ? 'Save Changes' : 'Create Goal'}
-          </Button>
-        </Box>
+      <DialogActions sx={{ px: 2.5, pb: 2.5, pt: 1.5 }}>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          fullWidth
+          size="large"
+          disabled={isPending}
+          startIcon={isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          sx={{ py: 1.6, fontSize: '1rem', borderRadius: 3, minHeight: 54 }}
+        >
+          {goal ? 'Save Changes' : 'Create Goal'}
+        </Button>
       </DialogActions>
-    </Dialog>
+    </>
+  );
+
+  return (
+    <BottomSheet open={open} onClose={onClose} maxWidth="sm">
+      {content}
+    </BottomSheet>
   );
 }

@@ -95,9 +95,9 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
   const [editGoalOpen, setEditGoalOpen] = useState(false);
   const [deleteGoalConfirm, setDeleteGoalConfirm] = useState(false);
 
-  const [likeState, setLikeState] = useState({ like_count: goal.like_count, liked_by: goal.liked_by });
+  const [likeState, setLikeState] = useState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
   useEffect(() => {
-    setLikeState({ like_count: goal.like_count, liked_by: goal.liked_by });
+    setLikeState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
   }, [goal.id, goal.like_count, goal.liked_by]);
 
   const hasTodayEntry = entries.some((e) => e.logged_for === selectedDay);
@@ -116,7 +116,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
         : await likeGoal(goal.id, currentUserId, selectedDay);
       setLikeState(result);
     } catch {
-      setLikeState({ like_count: goal.like_count, liked_by: goal.liked_by });
+      setLikeState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
     }
   };
 

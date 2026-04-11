@@ -50,6 +50,10 @@ function makeGoal(overrides: Partial<GoalWithProgress & { id: string }> = {}): G
     percentage: 50,
     on_track: null,
     recent_entries: [],
+    day_entries: [],
+    day_entry_count: 0,
+    like_count: 0,
+    liked_by: [],
     ...overrides,
   };
 }

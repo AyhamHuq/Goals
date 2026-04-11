@@ -31,6 +31,9 @@ interface GoalWithProgress {
   on_track: boolean | null;
   recent_entries: ProgressEntrySlim[];
   day_entries: ProgressEntrySlim[];
+  day_entry_count: number;
+  like_count: number;
+  liked_by: string[];
 }
 
 export interface PersonalDashboardResponse {
@@ -153,6 +156,9 @@ export async function getPersonalDashboard(
       on_track: calc.onTrack,
       recent_entries: recentResult.rows,
       day_entries: dayResult.rows,
+      day_entry_count: dayResult.rows.length,
+      like_count: 0,
+      liked_by: [],
     });
   }
 
@@ -250,6 +256,9 @@ export async function getGroupDashboard(
         on_track: calc.onTrack,
         recent_entries: [],
         day_entries: [],
+        day_entry_count: 0,
+        like_count: 0,
+        liked_by: [],
       };
     });
 
@@ -257,6 +266,49 @@ export async function getGroupDashboard(
       user: { id: userRow.id, display_name: userRow.display_name, avatar_color: userRow.avatar_color },
       goals,
     });
+  }
+
+  // Batch-load day entry counts and likes for all goals
+  const allGoals = users.flatMap((u) => u.goals);
+  if (allGoals.length > 0) {
+    const goalIds = allGoals.map((g) => g.id);
+
+    const [entryCounts, likesResult] = await Promise.all([
+      pool.query<{ goal_id: string; count: number }>(
+        `SELECT goal_id, COUNT(*)::int AS count
+         FROM progress_entries
+         WHERE goal_id = ANY($1) AND logged_for = $2
+         GROUP BY goal_id`,
+        [goalIds, selectedDay],
+      ),
+      pool.query<{ goal_id: string; liker_user_id: string }>(
+        `SELECT goal_id, liker_user_id
+         FROM likes
+         WHERE goal_id = ANY($1) AND liked_for = $2`,
+        [goalIds, selectedDay],
+      ),
+    ]);
+
+    const entryCountMap = new Map<string, number>();
+    for (const row of entryCounts.rows) {
+      entryCountMap.set(row.goal_id, row.count);
+    }
+
+    const likersMap = new Map<string, string[]>();
+    for (const row of likesResult.rows) {
+      const existing = likersMap.get(row.goal_id) ?? [];
+      existing.push(row.liker_user_id);
+      likersMap.set(row.goal_id, existing);
+    }
+
+    for (const userEntry of users) {
+      for (const goal of userEntry.goals) {
+        goal.day_entry_count = entryCountMap.get(goal.id) ?? 0;
+        const liked_by = likersMap.get(goal.id) ?? [];
+        goal.liked_by = liked_by;
+        goal.like_count = liked_by.length;
+      }
+    }
   }
 
   return { users };

@@ -68,6 +68,9 @@ export interface GoalWithProgress {
   on_track: boolean | null;
   recent_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
   day_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
+  day_entry_count: number;
+  like_count: number;
+  liked_by: string[];
 }
 
 export interface PersonalDashboardResponse {

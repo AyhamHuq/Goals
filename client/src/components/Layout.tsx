@@ -37,7 +37,7 @@ export default function Layout() {
             flex: 1,
             p: { xs: 1.5, sm: 3 },
             pb: isMobile
-              ? 'calc(100px + env(safe-area-inset-bottom, 0px))'
+              ? 'calc(140px + env(safe-area-inset-bottom, 0px))'
               : { xs: 1.5, sm: 3 },
             pl: { xs: 'max(12px, calc(12px + env(safe-area-inset-left, 0px)))', sm: 3 },
             pr: { xs: 'max(12px, calc(12px + env(safe-area-inset-right, 0px)))', sm: 3 },

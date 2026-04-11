@@ -11,7 +11,6 @@ export interface User {
   last_active_at: string | null;
   created_at: string;
   push_reminders_enabled: boolean;
-  reminder_hour: number;
 }
 
 export interface Category {
@@ -69,6 +68,9 @@ export interface GoalWithProgress {
   on_track: boolean | null;
   recent_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
   day_entries: Pick<ProgressEntry, 'id' | 'value' | 'logged_for' | 'note' | 'logged_unit' | 'logged_value'>[];
+  day_entry_count: number;
+  like_count: number;
+  liked_by: string[];
 }
 
 export interface PersonalDashboardResponse {

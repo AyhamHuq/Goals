@@ -122,12 +122,13 @@ interface DrawerState {
 }
 
 function OverviewTab({
-  users, isLoading, currentUserId, periodKey: _periodKey,
+  users, isLoading, currentUserId, periodKey: _periodKey, selectedDay,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
   periodKey: string;
+  selectedDay: string;
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -304,7 +305,7 @@ function OverviewTab({
                                 },
                               }}
                             />
-                            <Box display="flex" justifyContent="space-between" mt={0.4}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.4}>
                               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem' }}>
                                 {(() => {
                                   const m = getMonthlyDisplay(goal);
@@ -315,19 +316,21 @@ function OverviewTab({
                                   return `${fmtValue(m.current)} / ${ap}${fmtValue(m.monthlyTarget)} ${m.unit}`;
                                 })()}
                               </Typography>
-                              {goal.on_track !== null && (
-                                <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
-                                  {goal.on_track
-                                    ? <CheckCircleRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.success }} />
-                                    : <WarningRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.error }} />}
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
-                                  >
-                                    {goal.on_track ? 'On pace' : 'Behind'}
-                                  </Typography>
-                                </Box>
-                              )}
+                              <Box display="flex" alignItems="center" gap={0.5}>
+                                {goal.on_track !== null && (
+                                  <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
+                                    {goal.on_track
+                                      ? <CheckCircleRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.success }} />
+                                      : <WarningRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.error }} />}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
+                                    >
+                                      {goal.on_track ? 'On pace' : 'Behind'}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
                             </Box>
                           </Box>
                         </Box>
@@ -347,6 +350,8 @@ function OverviewTab({
           onClose={() => setDrawer(null)}
           goal={drawer.goal}
           readOnly={drawer.userId !== currentUserId}
+          currentUserId={currentUserId}
+          selectedDay={selectedDay}
         />
       )}
     </>
@@ -356,11 +361,12 @@ function OverviewTab({
 const rankColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 
 function ByCategoryTab({
-  users, isLoading, currentUserId,
+  users, isLoading, currentUserId, selectedDay,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
+  selectedDay: string;
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -511,6 +517,8 @@ function ByCategoryTab({
           onClose={() => setDrawer(null)}
           goal={drawer.goal}
           readOnly={drawer.userId !== currentUserId}
+          currentUserId={currentUserId}
+          selectedDay={selectedDay}
         />
       )}
     </>
@@ -539,7 +547,7 @@ export default function GroupDashboard() {
   const currentUserId = selectedUser?.id ?? '';
 
   return (
-    <Box>
+    <Box sx={{ pb: { xs: '60px', sm: 0 } }}>
       <Typography
         variant="h5"
         fontWeight={800}
@@ -600,6 +608,7 @@ export default function GroupDashboard() {
           isLoading={isLoading}
           currentUserId={currentUserId}
           periodKey={periodKey}
+          selectedDay={selectedDay}
         />
       )}
       {tab === 1 && (
@@ -607,6 +616,7 @@ export default function GroupDashboard() {
           users={users}
           isLoading={isLoading}
           currentUserId={currentUserId}
+          selectedDay={selectedDay}
         />
       )}
     </Box>

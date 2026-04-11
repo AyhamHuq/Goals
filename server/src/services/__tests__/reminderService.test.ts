@@ -23,11 +23,16 @@ const mockGetStreak = getUserStreak as jest.Mock;
 const TODAY = new Date('2026-04-10T00:00:00Z');
 const TODAY_STR = '2026-04-10';
 
-const USER = {
-  id: 'user-1',
-  display_name: 'Alice',
-  reminder_hour: 20,
-};
+const USER = { id: 'user-1', display_name: 'Alice' };
+
+// Helper: mock a full successful send (users query + not completed + not sent + insert)
+function mockFullSend(users = [USER]) {
+  mockQuery
+    .mockResolvedValueOnce({ rows: users })      // eligible users
+    .mockResolvedValueOnce({ rows: [] })          // not completed
+    .mockResolvedValueOnce({ rows: [] })          // not sent yet
+    .mockResolvedValueOnce({ rows: [] });         // insert
+}
 
 beforeEach(() => {
   mockQuery.mockReset();
@@ -37,105 +42,182 @@ beforeEach(() => {
   mockGetStreak.mockResolvedValue(0);
 });
 
-describe('sendDailyReminders', () => {
-  it('does not send push for users with wrong hour', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] }); // users query returns nobody
-    await sendDailyReminders(19, TODAY); // hour 19, user wants 20
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
-
-  it('skips users who already marked today as done', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [USER] }) // eligible users
-      .mockResolvedValueOnce({ rows: [{ id: 'comp-1' }] }); // already marked done today
-    await sendDailyReminders(20, TODAY);
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
-
-  it('skips users with a notification already sent today', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [USER] }) // eligible users
-      .mockResolvedValueOnce({ rows: [] }) // no progress today
-      .mockResolvedValueOnce({ rows: [{ id: 'notif-1' }] }); // already notified
-    await sendDailyReminders(20, TODAY);
-    expect(mockSendPush).not.toHaveBeenCalled();
-  });
-
-  it('sends push notification with streak info when user has active streak', async () => {
-    mockGetStreak.mockResolvedValue(5);
-    mockQuery
-      .mockResolvedValueOnce({ rows: [USER] }) // eligible users
-      .mockResolvedValueOnce({ rows: [] }) // no progress today
-      .mockResolvedValueOnce({ rows: [] }) // no prior notification
-      .mockResolvedValueOnce({ rows: [{ id: 'notif-new' }] }); // insert notification_log
-
-    await sendDailyReminders(20, TODAY);
-
+describe('sendDailyReminders — window routing', () => {
+  it('sends at hour 15 (afternoon window)', async () => {
+    mockFullSend();
+    await sendDailyReminders(15, TODAY);
     expect(mockSendPush).toHaveBeenCalledTimes(1);
-    const [userId, title, body] = mockSendPush.mock.calls[0];
-    expect(userId).toBe('user-1');
-    expect(title).toBe('Goal Tracker');
-    expect(body).toContain('5-day streak');
-    expect(body).toContain('Alice');
-    expect(body).toContain('mark done');
   });
 
-  it('sends generic push reminder when user has no streak', async () => {
+  it('sends at hour 20 (evening window)', async () => {
+    mockFullSend();
+    await sendDailyReminders(20, TODAY);
+    expect(mockSendPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends at hour 22 (final window)', async () => {
+    mockFullSend();
+    await sendDailyReminders(22, TODAY);
+    expect(mockSendPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing at a non-window hour and makes no DB calls', async () => {
+    await sendDailyReminders(14, TODAY);
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockSendPush).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing at hour 16 (non-window)', async () => {
+    await sendDailyReminders(16, TODAY);
+    expect(mockSendPush).not.toHaveBeenCalled();
+  });
+});
+
+describe('sendDailyReminders — skip conditions', () => {
+  it('skips users who already completed the day', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [USER] })
+      .mockResolvedValueOnce({ rows: [{ id: 'comp-1' }] }); // already done
+
+    await sendDailyReminders(15, TODAY);
+    expect(mockSendPush).not.toHaveBeenCalled();
+  });
+
+  it('skips if this window already sent today', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [USER] })
+      .mockResolvedValueOnce({ rows: [] })                  // not completed
+      .mockResolvedValueOnce({ rows: [{ id: 'log-1' }] }); // already sent
+
+    await sendDailyReminders(15, TODAY);
+    expect(mockSendPush).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when no users have reminders enabled', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    await sendDailyReminders(15, TODAY);
+    expect(mockSendPush).not.toHaveBeenCalled();
+  });
+});
+
+describe('sendDailyReminders — notification_type per window', () => {
+  it('uses push_afternoon at hour 15', async () => {
+    mockFullSend();
+    await sendDailyReminders(15, TODAY);
+    const notifCheckCall = mockQuery.mock.calls[2];
+    expect(notifCheckCall[1]).toContain('push_afternoon');
+  });
+
+  it('uses push_evening at hour 20', async () => {
+    mockFullSend();
+    await sendDailyReminders(20, TODAY);
+    const notifCheckCall = mockQuery.mock.calls[2];
+    expect(notifCheckCall[1]).toContain('push_evening');
+  });
+
+  it('uses push_final at hour 22', async () => {
+    mockFullSend();
+    await sendDailyReminders(22, TODAY);
+    const notifCheckCall = mockQuery.mock.calls[2];
+    expect(notifCheckCall[1]).toContain('push_final');
+  });
+});
+
+describe('sendDailyReminders — message copy', () => {
+  it('afternoon with streak mentions the streak count and name', async () => {
+    mockGetStreak.mockResolvedValue(7);
+    mockFullSend();
+    await sendDailyReminders(15, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
+    expect(body).toContain('Alice');
+    expect(body).toContain('7');
+  });
+
+  it('afternoon without streak mentions logging goals', async () => {
     mockGetStreak.mockResolvedValue(0);
-    mockQuery
-      .mockResolvedValueOnce({ rows: [USER] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-
-    await sendDailyReminders(20, TODAY);
-
-    expect(mockSendPush).toHaveBeenCalledTimes(1);
-    const [userId, title, body] = mockSendPush.mock.calls[0];
-    expect(userId).toBe('user-1');
-    expect(title).toBe('Goal Tracker');
+    mockFullSend();
+    await sendDailyReminders(15, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
     expect(body).toContain('Alice');
-    expect(body).not.toContain('streak');
+    expect(body).toMatch(/log|goal/i);
   });
 
-  it('records sent notification in notification_log', async () => {
+  it('evening with streak mentions streak', async () => {
     mockGetStreak.mockResolvedValue(3);
-    mockQuery
-      .mockResolvedValueOnce({ rows: [USER] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-
+    mockFullSend();
     await sendDailyReminders(20, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
+    expect(body).toContain('3');
+    expect(body).toContain('Alice');
+  });
 
-    // The 4th query should be the INSERT into notification_log
+  it('evening without streak mentions logging progress', async () => {
+    mockGetStreak.mockResolvedValue(0);
+    mockFullSend();
+    await sendDailyReminders(20, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
+    expect(body).toContain('Alice');
+    expect(body).toMatch(/log/i);
+  });
+
+  it('final window title says Last chance', async () => {
+    mockFullSend();
+    await sendDailyReminders(22, TODAY);
+    const [, title] = mockSendPush.mock.calls[0];
+    expect(title).toContain('Last chance');
+  });
+
+  it('final window with streak body mentions keeping the streak', async () => {
+    mockGetStreak.mockResolvedValue(5);
+    mockFullSend();
+    await sendDailyReminders(22, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
+    expect(body).toContain('5');
+    expect(body).toContain('Alice');
+  });
+
+  it('final window without streak body mentions midnight', async () => {
+    mockGetStreak.mockResolvedValue(0);
+    mockFullSend();
+    await sendDailyReminders(22, TODAY);
+    const [, , body] = mockSendPush.mock.calls[0];
+    expect(body).toContain('Alice');
+    expect(body).toMatch(/midnight/i);
+  });
+});
+
+describe('sendDailyReminders — notification_log recording', () => {
+  it('inserts into notification_log with correct user, type, and date', async () => {
+    mockFullSend();
+    await sendDailyReminders(15, TODAY);
     const insertCall = mockQuery.mock.calls[3];
     expect(insertCall[0]).toMatch(/INSERT INTO notification_log/i);
     expect(insertCall[1]).toContain(USER.id);
     expect(insertCall[1]).toContain(TODAY_STR);
+    expect(insertCall[1]).toContain('push_afternoon');
   });
+});
 
-  it('handles push errors gracefully and continues to next user', async () => {
-    const USER2 = { ...USER, id: 'user-2', display_name: 'Bob' };
+describe('sendDailyReminders — error handling', () => {
+  it('continues to second user if first push fails', async () => {
+    const USER2 = { id: 'user-2', display_name: 'Bob' };
     mockSendPush
       .mockRejectedValueOnce(new Error('Push error'))
       .mockResolvedValueOnce({ sent: 1, failed: 0 });
 
     mockQuery
       .mockResolvedValueOnce({ rows: [USER, USER2] }) // 2 users
-      // User 1: no progress, no prior notification
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      // User 2: no progress, no prior notification
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] }); // User 2 insert
+      .mockResolvedValueOnce({ rows: [] })             // user1: not completed
+      .mockResolvedValueOnce({ rows: [] })             // user1: not sent
+      // user1 push throws — no insert call
+      .mockResolvedValueOnce({ rows: [] })             // user2: not completed
+      .mockResolvedValueOnce({ rows: [] })             // user2: not sent
+      .mockResolvedValueOnce({ rows: [] });             // user2: insert
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    await sendDailyReminders(20, TODAY);
+    await sendDailyReminders(15, TODAY);
     consoleSpy.mockRestore();
 
-    // Both attempted
     expect(mockSendPush).toHaveBeenCalledTimes(2);
   });
 });

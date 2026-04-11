@@ -38,7 +38,6 @@ router.patch('/:id/touch', async (req: Request, res: Response, next: NextFunctio
 const preferencesSchema = z
   .object({
     push_reminders_enabled: z.boolean().optional(),
-    reminder_hour: z.number().int().min(0).max(23).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one preference field must be provided',
@@ -57,10 +56,6 @@ router.patch('/:id/preferences', validate(preferencesSchema), async (req: Reques
     if (fields.push_reminders_enabled !== undefined) {
       setClauses.push(`push_reminders_enabled = $${idx++}`);
       values.push(fields.push_reminders_enabled);
-    }
-    if (fields.reminder_hour !== undefined) {
-      setClauses.push(`reminder_hour = $${idx++}`);
-      values.push(fields.reminder_hour);
     }
 
     values.push(id);

@@ -280,10 +280,8 @@ export default function PersonalDashboard() {
             overflowX: 'auto',
             scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
-            // Bleed left to full viewport edge, keep right padding so last card isn't clipped
             ml: { xs: -1.5, sm: 0 },
             pl: { xs: 1.5, sm: 0 },
-            pr: { xs: 'max(12px, calc(12px + env(safe-area-inset-right, 0px)))', sm: 0 },
           }}
         >
           <StatCard value={totalCount} label="Goals" color="#6C5CE7" delay={0} />
@@ -298,6 +296,8 @@ export default function PersonalDashboard() {
               icon={<WhatshotRoundedIcon sx={{ fontSize: 16 }} />}
             />
           )}
+          {/* Spacer — browsers drop trailing padding in overflow:auto containers */}
+          <Box sx={{ minWidth: 12, flexShrink: 0, display: { sm: 'none' } }} />
         </Box>
       )}
 

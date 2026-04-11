@@ -4,7 +4,7 @@ import {
   FormControl, InputLabel, Alert, CircularProgress,
 } from '@mui/material';
 import { Download } from '@mui/icons-material';
-import TimeRangeFilter, { daysAgo, today } from './shared/TimeRangeFilter';
+import TimeRangeFilter, { today } from './shared/TimeRangeFilter';
 import { getAdminUsers, getAdminUserDetail, getAdminOverview } from '../../api/admin';
 import type { TimeRange } from '../../types/admin';
 

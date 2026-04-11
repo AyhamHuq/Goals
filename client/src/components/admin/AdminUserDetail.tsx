@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Box, Typography, Paper, Grid, Avatar, Chip, Skeleton, IconButton,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  LinearProgress, Tooltip,
+  LinearProgress,
 } from '@mui/material';
 import {
   ArrowBack, LocalFireDepartment, NotificationsActive,

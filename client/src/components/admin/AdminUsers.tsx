@@ -14,6 +14,28 @@ import { formatDistanceToNow } from 'date-fns';
 type SortKey = keyof AdminUser;
 type SortDir = 'asc' | 'desc';
 
+function SortableCell({
+  field, label, sortKey, sortDir, onSort,
+}: {
+  field: SortKey;
+  label: string;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  return (
+    <TableCell sortDirection={sortKey === field ? sortDir : false} sx={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
+      <TableSortLabel
+        active={sortKey === field}
+        direction={sortKey === field ? sortDir : 'asc'}
+        onClick={() => onSort(field)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
+}
+
 export default function AdminUsers() {
   const [range, setRange] = useState<TimeRange>('30d');
   const [from, setFrom] = useState(() => daysAgo(30));
@@ -41,18 +63,6 @@ export default function AdminUsers() {
     else { setSortKey(key); setSortDir('desc'); }
   };
 
-  const SortableCell = ({ field, label }: { field: SortKey; label: string }) => (
-    <TableCell sortDirection={sortKey === field ? sortDir : false} sx={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
-      <TableSortLabel
-        active={sortKey === field}
-        direction={sortKey === field ? sortDir : 'asc'}
-        onClick={() => handleSort(field)}
-      >
-        {label}
-      </TableSortLabel>
-    </TableCell>
-  );
-
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} gutterBottom>Users</Typography>
@@ -65,16 +75,16 @@ export default function AdminUsers() {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ '& th': { bgcolor: 'background.default' } }}>
-              <SortableCell field="display_name" label="User" />
-              <SortableCell field="goals_count" label="Goals" />
-              <SortableCell field="entries_count" label="Entries" />
-              <SortableCell field="avg_completion" label="Avg %" />
-              <SortableCell field="streak" label="Streak" />
-              <SortableCell field="likes_given" label="Likes Given" />
-              <SortableCell field="likes_received" label="Likes Recv" />
-              <SortableCell field="period_count" label="Months" />
+              <SortableCell field="display_name" label="User" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="goals_count" label="Goals" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="entries_count" label="Entries" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="avg_completion" label="Avg %" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="streak" label="Streak" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="likes_given" label="Likes Given" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="likes_received" label="Likes Recv" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              <SortableCell field="period_count" label="Months" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
               <TableCell sx={{ fontWeight: 600 }}>Push</TableCell>
-              <SortableCell field="last_active_at" label="Last Active" />
+              <SortableCell field="last_active_at" label="Last Active" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
             </TableRow>
           </TableHead>
           <TableBody>

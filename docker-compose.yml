@@ -37,6 +37,7 @@ services:
       VAPID_EMAIL: ${VAPID_EMAIL:-mailto:admin@example.com}
       TZ: ${TZ:-America/New_York}
       SEED_USERS: ${SEED_USERS:-Alice,Bob,Charlie,Diana,Eve,Frank}
+      ADMIN_PIN: ${ADMIN_PIN:-}
     depends_on:
       db:
         condition: service_healthy

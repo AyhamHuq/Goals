@@ -3,11 +3,8 @@ import {
   Button,
   Box,
   Typography,
-  CircularProgress,
   Switch,
   FormControlLabel,
-  MenuItem,
-  TextField,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -28,26 +25,16 @@ interface Props {
   user: User;
 }
 
-const HOUR_OPTIONS = Array.from({ length: 17 }, (_, i) => i + 6);
-
-function hourLabel(h: number): string {
-  const ampm = h < 12 ? 'AM' : 'PM';
-  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${display}:00 ${ampm}`;
-}
-
 export default function NotificationSettings({ open, onClose, user }: Props) {
   const [enabled, setEnabled] = useState(user.push_reminders_enabled);
-  const [hour, setHour] = useState(user.reminder_hour);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     setEnabled(user.push_reminders_enabled);
-    setHour(user.reminder_hour);
   }, [user]);
 
-  const { mutate, isPending } = useUpdatePreferences();
+  const { mutate } = useUpdatePreferences();
 
   async function handleToggle(checked: boolean) {
     if (toggling) return;
@@ -70,7 +57,7 @@ export default function NotificationSettings({ open, onClose, user }: Props) {
         if (!subscription) { setToggling(false); return; }
         await subscribeUser(user.id, subscription);
         setEnabled(true);
-        mutate({ id: user.id, prefs: { push_reminders_enabled: true, reminder_hour: hour } });
+        mutate({ id: user.id, prefs: { push_reminders_enabled: true } });
       } else {
         const subscription = await swReg.pushManager.getSubscription();
         if (subscription) {
@@ -85,10 +72,6 @@ export default function NotificationSettings({ open, onClose, user }: Props) {
     } finally {
       setToggling(false);
     }
-  }
-
-  function handleSave() {
-    mutate({ id: user.id, prefs: { reminder_hour: hour } }, { onSuccess: onClose });
   }
 
   const pushSupported =
@@ -123,7 +106,9 @@ export default function NotificationSettings({ open, onClose, user }: Props) {
                 {enabled ? 'Reminders on' : 'Reminders off'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {enabled ? `Daily push at ${hourLabel(hour)}` : "You won't get daily reminders"}
+                {enabled
+                  ? 'Reminders at 3 PM, 8 PM, and 10 PM if not logged'
+                  : "You won't get daily reminders"}
               </Typography>
             </Box>
           </Box>
@@ -146,7 +131,7 @@ export default function NotificationSettings({ open, onClose, user }: Props) {
               <Box>
                 <Typography variant="body2" fontWeight={600}>Daily push reminders</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Get a nudge if you haven't logged progress
+                  You'll get reminders at 3 PM, 8 PM, and 10 PM if your day isn't logged
                 </Typography>
               </Box>
             }
@@ -157,36 +142,11 @@ export default function NotificationSettings({ open, onClose, user }: Props) {
               Notification permission denied. Enable in your browser or iOS Settings.
             </Alert>
           )}
-
-          {enabled && (
-            <TextField
-              select
-              label="Reminder time"
-              value={hour}
-              onChange={(e) => setHour(Number(e.target.value))}
-              size="small"
-              helperText="You'll get a reminder if you haven't logged progress by this time"
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-            >
-              {HOUR_OPTIONS.map((h) => (
-                <MenuItem key={h} value={h}>{hourLabel(h)}</MenuItem>
-              ))}
-            </TextField>
-          )}
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 2.5, pb: 2.5, pt: 1 }}>
-        <Button onClick={onClose} disabled={isPending || toggling} sx={{ borderRadius: 2.5 }}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={isPending || toggling}
-          startIcon={isPending ? <CircularProgress size={16} /> : null}
-          sx={{ borderRadius: 2.5 }}
-        >
-          Save
+        <Button onClick={onClose} disabled={toggling} sx={{ borderRadius: 2.5 }}>
+          Close
         </Button>
       </DialogActions>
     </BottomSheet>

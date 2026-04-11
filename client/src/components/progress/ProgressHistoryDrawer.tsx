@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -18,12 +18,15 @@ import {
   useTheme,
 } from '@mui/material';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded';
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { alpha } from '@mui/material/styles';
 import { GoalWithProgress, ProgressEntry } from '../../types';
+import { likeGoal, unlikeGoal } from '../../api/likes';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
 import { useDeleteGoal } from '../../hooks/useGoals';
 import { useToast } from '../Toast';
@@ -37,6 +40,8 @@ interface ProgressHistoryDrawerProps {
   onClose: () => void;
   goal: GoalWithProgress & { id: string };
   readOnly?: boolean;
+  currentUserId?: string;
+  selectedDay?: string;
 }
 
 function EditRow({
@@ -77,7 +82,7 @@ function EditRow({
   );
 }
 
-export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false }: ProgressHistoryDrawerProps) {
+export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false, currentUserId, selectedDay }: ProgressHistoryDrawerProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);
@@ -89,6 +94,31 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editGoalOpen, setEditGoalOpen] = useState(false);
   const [deleteGoalConfirm, setDeleteGoalConfirm] = useState(false);
+
+  const [likeState, setLikeState] = useState({ like_count: goal.like_count, liked_by: goal.liked_by });
+  useEffect(() => {
+    setLikeState({ like_count: goal.like_count, liked_by: goal.liked_by });
+  }, [goal.id, goal.like_count, goal.liked_by]);
+
+  const hasTodayEntry = entries.some((e) => e.logged_for === selectedDay);
+  const showLike = readOnly && !!currentUserId && !!selectedDay && hasTodayEntry;
+  const isLiked = likeState.liked_by.includes(currentUserId ?? '');
+
+  const handleLike = async () => {
+    if (!currentUserId || !selectedDay) return;
+    const optimistic = isLiked
+      ? { like_count: likeState.like_count - 1, liked_by: likeState.liked_by.filter((id) => id !== currentUserId) }
+      : { like_count: likeState.like_count + 1, liked_by: [...likeState.liked_by, currentUserId] };
+    setLikeState(optimistic);
+    try {
+      const result = isLiked
+        ? await unlikeGoal(goal.id, currentUserId, selectedDay)
+        : await likeGoal(goal.id, currentUserId, selectedDay);
+      setLikeState(result);
+    } catch {
+      setLikeState({ like_count: goal.like_count, liked_by: goal.liked_by });
+    }
+  };
 
   const handleSave = async (id: string, value: number, note: string) => {
     if (isNaN(value) || value <= 0) return;
@@ -173,7 +203,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                 </Typography>
               )}
             </Box>
-            <Box display="flex" gap={0.5}>
+            <Box display="flex" alignItems="center" gap={0.5}>
               {!readOnly && (
                 <>
                   <IconButton size="small" onClick={() => setEditGoalOpen(true)} aria-label="Edit goal" sx={{ color: 'text.secondary' }}>
@@ -183,6 +213,25 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                     <DeleteRoundedIcon fontSize="small" />
                   </IconButton>
                 </>
+              )}
+              {showLike && (
+                <Box display="flex" alignItems="center" gap={0.25}>
+                  <IconButton
+                    size="small"
+                    onClick={handleLike}
+                    aria-label={isLiked ? 'Unlike' : 'Like'}
+                    sx={{ color: isLiked ? '#EF5350' : 'text.secondary' }}
+                  >
+                    {isLiked
+                      ? <FavoriteRoundedIcon fontSize="small" />
+                      : <FavoriteBorderRoundedIcon fontSize="small" />}
+                  </IconButton>
+                  {likeState.like_count > 0 && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1 }}>
+                      {likeState.like_count}
+                    </Typography>
+                  )}
+                </Box>
               )}
               <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
                 <CloseRoundedIcon />

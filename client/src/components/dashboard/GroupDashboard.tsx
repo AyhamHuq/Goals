@@ -415,11 +415,12 @@ function OverviewTab({
 const rankColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 
 function ByCategoryTab({
-  users, isLoading, currentUserId,
+  users, isLoading, currentUserId, selectedDay,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
+  selectedDay: string;
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -570,6 +571,8 @@ function ByCategoryTab({
           onClose={() => setDrawer(null)}
           goal={drawer.goal}
           readOnly={drawer.userId !== currentUserId}
+          currentUserId={currentUserId}
+          selectedDay={selectedDay}
         />
       )}
     </>
@@ -667,6 +670,7 @@ export default function GroupDashboard() {
           users={users}
           isLoading={isLoading}
           currentUserId={currentUserId}
+          selectedDay={selectedDay}
         />
       )}
     </Box>

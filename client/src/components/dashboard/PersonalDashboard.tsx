@@ -185,7 +185,7 @@ export default function PersonalDashboard() {
   }
 
   return (
-    <Box sx={{ pb: showDoneBar ? '84px' : 0 }}>
+    <Box sx={{ pb: showDoneBar ? '100px' : '8px' }}>
       <Celebration trigger={celebrating} />
 
       {/* Greeting header */}
@@ -280,8 +280,10 @@ export default function PersonalDashboard() {
             overflowX: 'auto',
             scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
-            mx: { xs: -1.5, sm: 0 },
-            px: { xs: 1.5, sm: 0 },
+            // Bleed left to full viewport edge, keep right padding so last card isn't clipped
+            ml: { xs: -1.5, sm: 0 },
+            pl: { xs: 1.5, sm: 0 },
+            pr: { xs: 'max(12px, calc(12px + env(safe-area-inset-right, 0px)))', sm: 0 },
           }}
         >
           <StatCard value={totalCount} label="Goals" color="#6C5CE7" delay={0} />

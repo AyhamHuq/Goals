@@ -185,7 +185,7 @@ export default function PersonalDashboard() {
   }
 
   return (
-    <Box sx={{ pb: showDoneBar ? '100px' : '8px' }}>
+    <Box sx={{ pb: showDoneBar ? '160px' : '8px' }}>
       <Celebration trigger={celebrating} />
 
       {/* Greeting header */}

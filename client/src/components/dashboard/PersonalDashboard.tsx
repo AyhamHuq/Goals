@@ -81,10 +81,10 @@ function StatCard({
   return (
     <Box
       sx={{
-        minWidth: 90,
-        flexShrink: 0,
+        flex: 1,
+        minWidth: 0,
         borderRadius: '16px',
-        px: 2,
+        px: 1.5,
         py: 1.5,
         textAlign: 'center',
         bgcolor: isDark ? alpha(color, 0.12) : alpha(color, 0.08),
@@ -185,7 +185,7 @@ export default function PersonalDashboard() {
   }
 
   return (
-    <Box sx={{ pb: showDoneBar ? '84px' : 0 }}>
+    <Box sx={{ pb: showDoneBar ? '100px' : '8px' }}>
       <Celebration trigger={celebrating} />
 
       {/* Greeting header */}
@@ -272,18 +272,7 @@ export default function PersonalDashboard() {
 
       {/* Stats strip */}
       {!isLoading && totalCount > 0 && (
-        <Box
-          display="flex"
-          gap={1.25}
-          mb={2.5}
-          sx={{
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
-            mx: { xs: -1.5, sm: 0 },
-            px: { xs: 1.5, sm: 0 },
-          }}
-        >
+        <Box display="flex" gap={1.25} mb={2.5}>
           <StatCard value={totalCount} label="Goals" color="#6C5CE7" delay={0} />
           <StatCard value={onTrackCount} label="On track" color="#00C9A7" delay={40} />
           <StatCard value={`${avgPct}%`} label="Average" color={avgColor} delay={80} />

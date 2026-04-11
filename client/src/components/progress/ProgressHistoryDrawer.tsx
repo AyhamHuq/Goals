@@ -111,11 +111,28 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
     setDeleteConfirmId(null);
   };
 
-  // Sparkline data from entries
-  const sparklineData = entries
-    .slice()
-    .reverse()
-    .map((e) => Number(e.value));
+  // Sparkline data: cumulative running total (accumulation) or latest value per day (measurement)
+  const sparklineData = (() => {
+    const sorted = [...entries].reverse(); // oldest → newest
+    if (goal.goal_type === 'accumulation') {
+      // Group by day, sum per day, then build running total
+      const byDate = new Map<string, number>();
+      for (const e of sorted) {
+        byDate.set(e.logged_for, (byDate.get(e.logged_for) ?? 0) + Number(e.value));
+      }
+      const dates = Array.from(byDate.keys()).sort();
+      let running = 0;
+      return dates.map((d) => { running += byDate.get(d)!; return running; });
+    } else {
+      // Measurement: latest value per day
+      const byDate = new Map<string, number>();
+      for (const e of sorted) {
+        byDate.set(e.logged_for, Number(e.value));
+      }
+      const dates = Array.from(byDate.keys()).sort();
+      return dates.map((d) => byDate.get(d)!);
+    }
+  })();
 
   const goalTitle = (() => {
     const base = getMonthlyLabel(goal);

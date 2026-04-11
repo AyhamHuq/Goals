@@ -159,7 +159,14 @@ function OverviewTab({
           const avgClamped = Math.min(avg, 100);
           const isChampion = avg >= 80;
           const isExpanded = expandedUserId === user.id;
-          const ringColor = avg >= 80 ? '#00C9A7' : avg >= 50 ? '#FFB830' : '#EF5350';
+          // Color by on_track pacing status, not raw % (which is low early in the period)
+          const behindCount = goals.filter((g) => g.on_track === false).length;
+          const onTrackCount = goals.filter((g) => g.on_track === true).length;
+          const ringColor = behindCount === 0
+            ? '#00C9A7'                              // nobody behind → green
+            : behindCount <= onTrackCount
+              ? '#FFB830'                            // minority behind → amber
+              : '#EF5350';                           // majority behind → red
 
           return (
             <Card key={user.id} sx={{ borderRadius: '20px', overflow: 'hidden' }}>

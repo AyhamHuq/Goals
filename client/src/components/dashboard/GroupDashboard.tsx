@@ -539,7 +539,7 @@ export default function GroupDashboard() {
   const currentUserId = selectedUser?.id ?? '';
 
   return (
-    <Box>
+    <Box sx={{ pb: { xs: '60px', sm: 0 } }}>
       <Typography
         variant="h5"
         fontWeight={800}

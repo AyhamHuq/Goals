@@ -214,25 +214,6 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                   </IconButton>
                 </>
               )}
-              {showLike && (
-                <Box display="flex" alignItems="center" gap={0.25}>
-                  <IconButton
-                    size="small"
-                    onClick={handleLike}
-                    aria-label={isLiked ? 'Unlike' : 'Like'}
-                    sx={{ color: isLiked ? '#EF5350' : 'text.secondary' }}
-                  >
-                    {isLiked
-                      ? <FavoriteRoundedIcon fontSize="small" />
-                      : <FavoriteBorderRoundedIcon fontSize="small" />}
-                  </IconButton>
-                  {likeState.like_count > 0 && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1 }}>
-                      {likeState.like_count}
-                    </Typography>
-                  )}
-                </Box>
-              )}
               <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
                 <CloseRoundedIcon />
               </IconButton>
@@ -292,7 +273,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                     ) : (
                       <Box display="flex" alignItems="flex-start" width="100%">
                         <Box flex={1} minWidth={0}>
-                          <Box display="flex" alignItems="baseline" gap={1.5}>
+                          <Box display="flex" alignItems="center" gap={1.5}>
                             <Typography variant="body2" fontWeight={700} sx={{ minWidth: 80, letterSpacing: '-0.01em' }}>
                               {formatLoggedFor(entry.logged_for)}
                             </Typography>
@@ -302,6 +283,25 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                                 : `${entry.value} ${goal.unit}`
                               }
                             </Typography>
+                            {showLike && entry.logged_for === selectedDay && (
+                              <Box display="flex" alignItems="center" gap={0.25} ml="auto">
+                                <IconButton
+                                  size="small"
+                                  onClick={handleLike}
+                                  aria-label={isLiked ? 'Unlike' : 'Like'}
+                                  sx={{ color: isLiked ? '#EF5350' : 'text.secondary', p: 0.5 }}
+                                >
+                                  {isLiked
+                                    ? <FavoriteRoundedIcon sx={{ fontSize: 18 }} />
+                                    : <FavoriteBorderRoundedIcon sx={{ fontSize: 18 }} />}
+                                </IconButton>
+                                {likeState.like_count > 0 && (
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1 }}>
+                                    {likeState.like_count}
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
                           </Box>
                           {entry.note && (
                             <Typography

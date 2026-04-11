@@ -192,7 +192,9 @@ describe('getGroupDashboard', () => {
           target_value: '4.00', current_value: '4.00', unit: 'books',
           cat_id: null, cat_name: null,
         }],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [] })  // batch: day entry counts
+      .mockResolvedValueOnce({ rows: [] }); // batch: likes
 
     const result = await getGroupDashboard(GROUP_ID, PERIOD, REF_DATE);
     expect(result.users).toHaveLength(1);
@@ -200,6 +202,9 @@ describe('getGroupDashboard', () => {
     expect(result.users[0].goals).toHaveLength(1);
     expect(result.users[0].goals[0].percentage).toBeCloseTo(100);
     expect(result.users[0].goals[0].current_value).toBe(4);
+    expect(result.users[0].goals[0].day_entry_count).toBe(0);
+    expect(result.users[0].goals[0].like_count).toBe(0);
+    expect(result.users[0].goals[0].liked_by).toEqual([]);
   });
 
   it('handles user with no goals', async () => {

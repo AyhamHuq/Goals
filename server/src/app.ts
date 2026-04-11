@@ -11,6 +11,7 @@ import historyRouter from './routes/history';
 import sandboxRouter from './routes/sandbox';
 import dailyCompletionsRouter from './routes/dailyCompletions';
 import pushRouter from './routes/push';
+import likesRouter from './routes/likes';
 
 export const app = express();
 
@@ -30,5 +31,6 @@ app.use('/api/history', historyRouter);
 app.use('/api/sandbox', sandboxRouter);
 app.use('/api/daily-completions', dailyCompletionsRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/likes', likesRouter);
 
 app.use(errorHandler);

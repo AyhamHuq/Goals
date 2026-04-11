@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -10,9 +10,12 @@ import {
   Collapse,
   Divider,
   LinearProgress,
+  IconButton,
   useTheme,
 } from '@mui/material';
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded';
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
@@ -27,6 +30,7 @@ import { GOAL_TEMPLATES } from '../../constants/goalTemplates';
 import { PACING_HEX } from '../../theme/tokens';
 import ProgressHistoryDrawer from '../progress/ProgressHistoryDrawer';
 import CircularProgressRing from '../shared/CircularProgressRing';
+import { likeGoal, unlikeGoal } from '../../api/likes';
 
 type PacingColor = 'success' | 'warning' | 'error' | 'primary';
 
@@ -121,19 +125,49 @@ interface DrawerState {
   userId: string;
 }
 
+interface LikeState {
+  like_count: number;
+  liked_by: string[];
+}
+
 function OverviewTab({
-  users, isLoading, currentUserId, periodKey: _periodKey,
+  users, isLoading, currentUserId, periodKey: _periodKey, selectedDay,
 }: {
   users: UserGoalSummary[];
   isLoading: boolean;
   currentUserId: string;
   periodKey: string;
+  selectedDay: string;
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const [localLikes, setLocalLikes] = useState<Map<string, LikeState>>(new Map());
   const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+
+  const handleToggleLike = useCallback(async (goalId: string, ownerId: string, currentLikedBy: string[]) => {
+    if (ownerId === currentUserId) return;
+    const isLiked = currentLikedBy.includes(currentUserId);
+    const optimistic: LikeState = isLiked
+      ? { like_count: currentLikedBy.length - 1, liked_by: currentLikedBy.filter((id) => id !== currentUserId) }
+      : { like_count: currentLikedBy.length + 1, liked_by: [...currentLikedBy, currentUserId] };
+
+    setLocalLikes((prev) => new Map(prev).set(goalId, optimistic));
+    try {
+      const result = isLiked
+        ? await unlikeGoal(goalId, currentUserId, selectedDay)
+        : await likeGoal(goalId, currentUserId, selectedDay);
+      setLocalLikes((prev) => new Map(prev).set(goalId, result));
+    } catch {
+      // revert on error
+      setLocalLikes((prev) => {
+        const next = new Map(prev);
+        next.delete(goalId);
+        return next;
+      });
+    }
+  }, [currentUserId, selectedDay]);
 
   if (isLoading) {
     return (
@@ -304,7 +338,7 @@ function OverviewTab({
                                 },
                               }}
                             />
-                            <Box display="flex" justifyContent="space-between" mt={0.4}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.4}>
                               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem' }}>
                                 {(() => {
                                   const m = getMonthlyDisplay(goal);
@@ -315,19 +349,44 @@ function OverviewTab({
                                   return `${fmtValue(m.current)} / ${ap}${fmtValue(m.monthlyTarget)} ${m.unit}`;
                                 })()}
                               </Typography>
-                              {goal.on_track !== null && (
-                                <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
-                                  {goal.on_track
-                                    ? <CheckCircleRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.success }} />
-                                    : <WarningRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.error }} />}
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
-                                  >
-                                    {goal.on_track ? 'On pace' : 'Behind'}
-                                  </Typography>
-                                </Box>
-                              )}
+                              <Box display="flex" alignItems="center" gap={0.5}>
+                                {goal.on_track !== null && (
+                                  <Box display="flex" alignItems="center" gap={0.3} flexShrink={0}>
+                                    {goal.on_track
+                                      ? <CheckCircleRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.success }} />
+                                      : <WarningRoundedIcon sx={{ fontSize: 11, color: PACING_HEX.error }} />}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ fontSize: '0.66rem', color: goal.on_track ? PACING_HEX.success : PACING_HEX.error, fontWeight: 700 }}
+                                    >
+                                      {goal.on_track ? 'On pace' : 'Behind'}
+                                    </Typography>
+                                  </Box>
+                                )}
+                                {/* Like button — only on other users' goals with entries today */}
+                                {user.id !== currentUserId && goal.day_entry_count > 0 && (() => {
+                                  const effective = localLikes.get(goal.id) ?? { like_count: goal.like_count, liked_by: goal.liked_by };
+                                  const isLiked = effective.liked_by.includes(currentUserId);
+                                  return (
+                                    <Box
+                                      display="flex"
+                                      alignItems="center"
+                                      onClick={(e) => { e.stopPropagation(); handleToggleLike(goal.id, user.id, effective.liked_by); }}
+                                    >
+                                      <IconButton size="small" sx={{ p: 0.4, color: isLiked ? '#EF5350' : 'text.disabled' }}>
+                                        {isLiked
+                                          ? <FavoriteRoundedIcon sx={{ fontSize: 15 }} />
+                                          : <FavoriteBorderRoundedIcon sx={{ fontSize: 15 }} />}
+                                      </IconButton>
+                                      {effective.like_count > 0 && (
+                                        <Typography variant="caption" sx={{ fontSize: '0.66rem', color: 'text.secondary', lineHeight: 1 }}>
+                                          {effective.like_count}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  );
+                                })()}
+                              </Box>
                             </Box>
                           </Box>
                         </Box>
@@ -600,6 +659,7 @@ export default function GroupDashboard() {
           isLoading={isLoading}
           currentUserId={currentUserId}
           periodKey={periodKey}
+          selectedDay={selectedDay}
         />
       )}
       {tab === 1 && (

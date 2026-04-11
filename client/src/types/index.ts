@@ -11,7 +11,6 @@ export interface User {
   last_active_at: string | null;
   created_at: string;
   push_reminders_enabled: boolean;
-  reminder_hour: number;
 }
 
 export interface Category {

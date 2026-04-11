@@ -63,21 +63,10 @@ describe('PATCH /api/users/:id/preferences', () => {
     expect(res.body.push_reminders_enabled).toBe(true);
   });
 
-  it('updates reminder_hour and returns updated user', async () => {
-    const updated = { id: 'uuid-1', push_reminders_enabled: false, reminder_hour: 9 };
-    mockQuery.mockResolvedValueOnce({ rows: [updated] });
-
+  it('returns 400 when sending unknown field reminder_hour', async () => {
     const res = await request(app)
       .patch('/api/users/uuid-1/preferences')
       .send({ reminder_hour: 9 });
-    expect(res.status).toBe(200);
-    expect(res.body.reminder_hour).toBe(9);
-  });
-
-  it('validates reminder_hour is 0-23', async () => {
-    const res = await request(app)
-      .patch('/api/users/uuid-1/preferences')
-      .send({ reminder_hour: 25 });
     expect(res.status).toBe(400);
   });
 

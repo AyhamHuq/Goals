@@ -3,7 +3,6 @@ import { User } from '../types';
 
 export interface UserPreferences {
   push_reminders_enabled?: boolean;
-  reminder_hour?: number;
 }
 
 export async function getUsers(): Promise<User[]> {

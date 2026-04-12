@@ -13,3 +13,11 @@ goaltracking.duckdns.org {
 staging.goaltracking.duckdns.org {
     reverse_proxy localhost:3101
 }
+
+admin.goaltracking.duckdns.org {
+    reverse_proxy localhost:3100
+}
+
+admin.staging.goaltracking.duckdns.org {
+    reverse_proxy localhost:3101
+}

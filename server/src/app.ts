@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler';
 import { config } from './config';
 import usersRouter from './routes/users';
@@ -12,11 +13,13 @@ import sandboxRouter from './routes/sandbox';
 import dailyCompletionsRouter from './routes/dailyCompletions';
 import pushRouter from './routes/push';
 import likesRouter from './routes/likes';
+import adminRouter from './routes/admin';
 
 export const app = express();
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', sandbox: config.sandbox, timestamp: new Date().toISOString() });
@@ -32,5 +35,6 @@ app.use('/api/sandbox', sandboxRouter);
 app.use('/api/daily-completions', dailyCompletionsRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/likes', likesRouter);
+app.use('/api/admin', adminRouter);
 
 app.use(errorHandler);

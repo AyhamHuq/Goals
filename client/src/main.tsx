@@ -11,6 +11,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { SandboxBanner } from './components/SandboxBanner';
 import { registerServiceWorker } from './utils/pushNotifications';
 
+const isAdminSubdomain = window.location.hostname.startsWith('admin.');
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -20,23 +22,31 @@ const queryClient = new QueryClient({
   },
 });
 
-registerServiceWorker();
+if (!isAdminSubdomain) {
+  registerServiceWorker();
+}
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <AppThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <UserProvider>
-            <PeriodProvider>
-              <ToastProvider>
-                <SandboxBanner />
-                <ErrorBoundary>
-                  <App />
-                </ErrorBoundary>
-              </ToastProvider>
-            </PeriodProvider>
-          </UserProvider>
+          {isAdminSubdomain ? (
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          ) : (
+            <UserProvider>
+              <PeriodProvider>
+                <ToastProvider>
+                  <SandboxBanner />
+                  <ErrorBoundary>
+                    <App />
+                  </ErrorBoundary>
+                </ToastProvider>
+              </PeriodProvider>
+            </UserProvider>
+          )}
         </BrowserRouter>
       </QueryClientProvider>
     </AppThemeProvider>

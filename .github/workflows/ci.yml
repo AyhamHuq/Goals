@@ -189,6 +189,8 @@ jobs:
     steps:
       - name: Deploy staging via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          ADMIN_PIN: ${{ secrets.ADMIN_PIN }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
@@ -218,6 +220,8 @@ jobs:
     steps:
       - name: Deploy production via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          ADMIN_PIN: ${{ secrets.ADMIN_PIN }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}

@@ -101,6 +101,9 @@ function EmptyChart() {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00Z');
+  // PostgreSQL generate_series with interval returns timestamps like '2026-04-06 00:00:00'
+  // normalise both space-separated and T-separated datetime strings to YYYY-MM-DD
+  const datePart = dateStr.split('T')[0].split(' ')[0];
+  const d = new Date(datePart + 'T00:00:00Z');
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 }

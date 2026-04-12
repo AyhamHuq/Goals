@@ -69,18 +69,11 @@ export default function CalendarHeatmap({ data, year }: Props) {
     : ['#ebedf0', '#c5b9f8', '#9d8af5', '#7c5af0', '#6C5CE7'];
 
   return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <Box sx={{ display: 'inline-flex', flexDirection: 'column', gap: 0 }}>
+    <Box sx={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {/* Month labels */}
         <Box sx={{ display: 'flex', mb: 0.5, ml: `${CELL + GAP + 4}px` }}>
-          {monthLabels.map((ml, i) => (
-            <Box
-              key={i}
-              sx={{ position: 'relative', left: `${ml.col * (CELL + GAP)}px` }}
-              style={{ position: 'absolute' }}
-            />
-          ))}
-          <Box sx={{ display: 'flex', position: 'relative', height: 14, width: `${weeks.length * (CELL + GAP)}px` }}>
+          <Box sx={{ position: 'relative', height: 14, width: `${weeks.length * (CELL + GAP)}px` }}>
             {monthLabels.map((ml, i) => (
               <Typography
                 key={i}

@@ -122,4 +122,4 @@ export interface NotificationStats {
   }>;
 }
 
-export type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all' | 'custom';
+export type TimeRange = '12h' | '1d' | '7d' | '30d' | '90d' | '1y' | 'all' | 'custom';

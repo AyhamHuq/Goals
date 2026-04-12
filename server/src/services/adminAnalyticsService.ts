@@ -189,7 +189,7 @@ export async function getTrends(from: string, to: string, granularity: 'day' | '
 
   const result = await pool.query(`
     SELECT
-      d.date::text AS date,
+      TO_CHAR(d.date, 'YYYY-MM-DD') AS date,
       COALESCE(pe.count, 0) AS entries_logged,
       COALESCE(g.count, 0) AS goals_created,
       COALESCE(au.count, 0) AS active_users,

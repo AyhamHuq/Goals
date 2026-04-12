@@ -24,6 +24,8 @@ function yearStart(): string {
 }
 
 const PRESETS: Array<{ label: string; value: TimeRange; from: () => string; to: () => string }> = [
+  { label: '12h', value: '12h', from: today, to: today },
+  { label: '1d', value: '1d', from: () => daysAgo(1), to: today },
   { label: '7d', value: '7d', from: () => daysAgo(7), to: today },
   { label: '30d', value: '30d', from: () => daysAgo(30), to: today },
   { label: '90d', value: '90d', from: () => daysAgo(90), to: today },

@@ -20,6 +20,28 @@ async function currentLikers(goalId: string, date: string): Promise<string[]> {
   return result.rows.map((r) => r.liker_user_id);
 }
 
+// GET /api/likes/goal/:goalId — get all likes for a goal grouped by date
+router.get('/goal/:goalId', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { goalId } = req.params;
+    const result = await pool.query<{ liked_for: string; liker_user_id: string }>(
+      `SELECT liked_for, liker_user_id FROM likes WHERE goal_id = $1 ORDER BY liked_for`,
+      [goalId],
+    );
+    const byDate: Record<string, string[]> = {};
+    for (const row of result.rows) {
+      const dateKey = typeof row.liked_for === 'string'
+        ? row.liked_for
+        : (row.liked_for as Date).toISOString().split('T')[0];
+      if (!byDate[dateKey]) byDate[dateKey] = [];
+      byDate[dateKey].push(row.liker_user_id);
+    }
+    res.json({ likes_by_date: byDate });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/likes — like a goal's progress for a given day
 router.post('/', validate(likeBodySchema), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

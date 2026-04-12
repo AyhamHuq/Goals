@@ -30,6 +30,31 @@ beforeEach(() => {
   mockPush.mockResolvedValue({ sent: 1, failed: 0 });
 });
 
+describe('GET /api/likes/goal/:goalId', () => {
+  it('returns likes grouped by date', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { liked_for: '2026-04-10', liker_user_id: LIKER_ID },
+        { liked_for: '2026-04-10', liker_user_id: OWNER_ID },
+        { liked_for: '2026-04-11', liker_user_id: LIKER_ID },
+      ],
+    });
+
+    const res = await request(app).get(`/api/likes/goal/${GOAL_ID}`);
+    expect(res.status).toBe(200);
+    expect(res.body.likes_by_date['2026-04-10']).toEqual([LIKER_ID, OWNER_ID]);
+    expect(res.body.likes_by_date['2026-04-11']).toEqual([LIKER_ID]);
+  });
+
+  it('returns empty object when no likes exist', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app).get(`/api/likes/goal/${GOAL_ID}`);
+    expect(res.status).toBe(200);
+    expect(res.body.likes_by_date).toEqual({});
+  });
+});
+
 describe('POST /api/likes', () => {
   function mockLikeCreate(opts: { alreadyLiked?: boolean } = {}) {
     mockQuery

@@ -162,6 +162,28 @@ export async function getPersonalDashboard(
     });
   }
 
+  // Batch-load likes for all goals on selectedDay
+  if (goals.length > 0) {
+    const goalIds = goals.map((g) => g.id);
+    const likesResult = await pool.query<{ goal_id: string; liker_user_id: string }>(
+      `SELECT goal_id, liker_user_id
+       FROM likes
+       WHERE goal_id = ANY($1) AND liked_for = $2`,
+      [goalIds, selectedDay],
+    );
+    const likersMap = new Map<string, string[]>();
+    for (const row of likesResult.rows) {
+      const existing = likersMap.get(row.goal_id) ?? [];
+      existing.push(row.liker_user_id);
+      likersMap.set(row.goal_id, existing);
+    }
+    for (const goal of goals) {
+      const liked_by = likersMap.get(goal.id) ?? [];
+      goal.liked_by = liked_by;
+      goal.like_count = liked_by.length;
+    }
+  }
+
   const streak = await getUserStreak(userId, ref);
 
   // Check if user marked this day as done

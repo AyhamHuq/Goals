@@ -204,6 +204,11 @@ jobs:
             echo "ADMIN_PIN=${ADMIN_PIN}" >> /opt/goals/staging/.env
             git fetch origin ${{ github.head_ref }}
             git reset --hard origin/${{ github.head_ref }}
+            # Sync Caddyfile and reload if changed
+            if ! diff -q /opt/goals/Caddyfile /etc/caddy/Caddyfile > /dev/null 2>&1; then
+              cp /opt/goals/Caddyfile /etc/caddy/Caddyfile
+              systemctl reload caddy
+            fi
             APP_PORT=3101 docker compose \
               -p goals-staging \
               --env-file /opt/goals/staging/.env \
@@ -235,6 +240,11 @@ jobs:
             echo "ADMIN_PIN=${ADMIN_PIN}" >> /opt/goals/prod/.env
             git fetch origin main
             git reset --hard origin/main
+            # Sync Caddyfile and reload if changed
+            if ! diff -q /opt/goals/Caddyfile /etc/caddy/Caddyfile > /dev/null 2>&1; then
+              cp /opt/goals/Caddyfile /etc/caddy/Caddyfile
+              systemctl reload caddy
+            fi
             APP_PORT=3100 docker compose \
               -p goals-prod \
               --env-file /opt/goals/prod/.env \

@@ -404,7 +404,7 @@ export async function getUserDetail(userId: string, from: string, to: string): P
       LEFT JOIN (
         SELECT goal_id, SUM(value) AS current_value
         FROM progress_entries
-        WHERE logged_for LIKE $2
+        WHERE logged_for::text LIKE $2
         GROUP BY goal_id
       ) pe_sum ON pe_sum.goal_id = g.id
       WHERE g.user_id = $1 AND g.period_key = $3 AND NOT g.is_archived

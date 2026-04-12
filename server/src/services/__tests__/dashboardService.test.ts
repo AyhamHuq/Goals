@@ -47,9 +47,11 @@ describe('getPersonalDashboard', () => {
       .mockResolvedValueOnce({ rows: [{ id: 'pe-1', value: 1, logged_for: '2026-04-02', note: null }] })
       // Q4: day_entries
       .mockResolvedValueOnce({ rows: [] })
-      // Q5: streak
+      // Q5: batch likes
+      .mockResolvedValueOnce({ rows: [{ goal_id: 'goal-1', liker_user_id: 'liker-1' }] })
+      // Q6: streak
       .mockResolvedValueOnce({ rows: [{ completed_date: '2026-04-10' }, { completed_date: '2026-04-09' }] })
-      // Q6: day_completed
+      // Q7: day_completed
       .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
@@ -69,6 +71,8 @@ describe('getPersonalDashboard', () => {
     expect(goal.expected_value).toBeCloseTo(1.33, 1);
     expect(goal.recent_entries).toHaveLength(1);
     expect(goal.day_entries).toHaveLength(0);
+    expect(goal.like_count).toBe(1);
+    expect(goal.liked_by).toEqual(['liker-1']);
   });
 
   it('returns day_completed false when not marked done', async () => {
@@ -89,6 +93,7 @@ describe('getPersonalDashboard', () => {
       .mockResolvedValueOnce({ rows: [{ current_value: '10.00' }] }) // SUM
       .mockResolvedValueOnce({ rows: [] })  // recent
       .mockResolvedValueOnce({ rows: [] })  // day_entries
+      .mockResolvedValueOnce({ rows: [] })  // batch likes
       .mockResolvedValueOnce({ rows: [] })  // streak
       .mockResolvedValueOnce({ rows: [] }); // day_completed
 
@@ -127,6 +132,7 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [{ value: '82.50' }] })  // latest entry
       .mockResolvedValueOnce({ rows: [{ id: 'pe-1', value: 82.5, logged_for: '2026-04-05', note: null }] }) // recent
       .mockResolvedValueOnce({ rows: [] })  // day_entries
+      .mockResolvedValueOnce({ rows: [] })  // batch likes
       .mockResolvedValueOnce({ rows: [] })  // streak
       .mockResolvedValueOnce({ rows: [] }); // day_completed
 
@@ -150,6 +156,7 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [] }) // no entries
       .mockResolvedValueOnce({ rows: [] }) // recent
       .mockResolvedValueOnce({ rows: [] }) // day_entries
+      .mockResolvedValueOnce({ rows: [] }) // batch likes
       .mockResolvedValueOnce({ rows: [] }) // streak
       .mockResolvedValueOnce({ rows: [] }); // day_completed
 
@@ -171,6 +178,7 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [{ value: '80.00' }] })
       .mockResolvedValueOnce({ rows: [] }) // recent
       .mockResolvedValueOnce({ rows: [] }) // day_entries
+      .mockResolvedValueOnce({ rows: [] }) // batch likes
       .mockResolvedValueOnce({ rows: [] }) // streak
       .mockResolvedValueOnce({ rows: [] }); // day_completed
 

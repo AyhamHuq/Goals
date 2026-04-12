@@ -26,7 +26,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { alpha } from '@mui/material/styles';
 import { GoalWithProgress, ProgressEntry } from '../../types';
-import { likeGoal, unlikeGoal } from '../../api/likes';
+import { likeGoal, unlikeGoal, fetchGoalLikes } from '../../api/likes';
 import { useProgress, useUpdateProgress, useDeleteProgress } from '../../hooks/useProgress';
 import { useDeleteGoal } from '../../hooks/useGoals';
 import { useToast } from '../Toast';
@@ -95,28 +95,33 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
   const [editGoalOpen, setEditGoalOpen] = useState(false);
   const [deleteGoalConfirm, setDeleteGoalConfirm] = useState(false);
 
-  const [likeState, setLikeState] = useState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
+  // Per-date likes: map from date string to array of liker user IDs
+  const [likesByDate, setLikesByDate] = useState<Record<string, string[]>>({});
   useEffect(() => {
-    setLikeState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
-  }, [goal.id, goal.like_count, goal.liked_by]);
+    if (!open || !readOnly || !currentUserId) return;
+    fetchGoalLikes(goal.id).then((res) => setLikesByDate(res.likes_by_date)).catch(() => {});
+  }, [open, goal.id, readOnly, currentUserId]);
 
-  const hasTodayEntry = entries.some((e) => e.logged_for === selectedDay);
-  const showLike = readOnly && !!currentUserId && !!selectedDay && hasTodayEntry;
-  const isLiked = likeState.liked_by.includes(currentUserId ?? '');
+  const showLike = readOnly && !!currentUserId;
 
-  const handleLike = async () => {
-    if (!currentUserId || !selectedDay) return;
-    const optimistic = isLiked
-      ? { like_count: likeState.like_count - 1, liked_by: likeState.liked_by.filter((id) => id !== currentUserId) }
-      : { like_count: likeState.like_count + 1, liked_by: [...likeState.liked_by, currentUserId] };
-    setLikeState(optimistic);
+  const isLikedForDate = (date: string) => (likesByDate[date] ?? []).includes(currentUserId ?? '');
+  const likeCountForDate = (date: string) => (likesByDate[date] ?? []).length;
+
+  const handleLike = async (date: string) => {
+    if (!currentUserId) return;
+    const liked = isLikedForDate(date);
+    const current = likesByDate[date] ?? [];
+    const optimistic = liked
+      ? current.filter((id) => id !== currentUserId)
+      : [...current, currentUserId];
+    setLikesByDate((prev) => ({ ...prev, [date]: optimistic }));
     try {
-      const result = isLiked
-        ? await unlikeGoal(goal.id, currentUserId, selectedDay)
-        : await likeGoal(goal.id, currentUserId, selectedDay);
-      setLikeState(result);
+      const result = liked
+        ? await unlikeGoal(goal.id, currentUserId, date)
+        : await likeGoal(goal.id, currentUserId, date);
+      setLikesByDate((prev) => ({ ...prev, [date]: result.liked_by }));
     } catch {
-      setLikeState({ like_count: goal.like_count ?? 0, liked_by: goal.liked_by ?? [] });
+      setLikesByDate((prev) => ({ ...prev, [date]: current }));
     }
   };
 
@@ -283,21 +288,21 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
                                 : `${entry.value} ${goal.unit}`
                               }
                             </Typography>
-                            {showLike && entry.logged_for === selectedDay && (
+                            {showLike && (
                               <Box display="flex" alignItems="center" gap={0.25} ml="auto">
                                 <IconButton
                                   size="small"
-                                  onClick={handleLike}
-                                  aria-label={isLiked ? 'Unlike' : 'Like'}
-                                  sx={{ color: isLiked ? '#EF5350' : 'text.secondary', p: 0.5 }}
+                                  onClick={() => handleLike(entry.logged_for)}
+                                  aria-label={isLikedForDate(entry.logged_for) ? 'Unlike' : 'Like'}
+                                  sx={{ color: isLikedForDate(entry.logged_for) ? '#EF5350' : 'text.secondary', p: 0.5 }}
                                 >
-                                  {isLiked
+                                  {isLikedForDate(entry.logged_for)
                                     ? <FavoriteRoundedIcon sx={{ fontSize: 18 }} />
                                     : <FavoriteBorderRoundedIcon sx={{ fontSize: 18 }} />}
                                 </IconButton>
-                                {likeState.like_count > 0 && (
+                                {likeCountForDate(entry.logged_for) > 0 && (
                                   <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1 }}>
-                                    {likeState.like_count}
+                                    {likeCountForDate(entry.logged_for)}
                                   </Typography>
                                 )}
                               </Box>

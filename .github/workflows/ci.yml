@@ -193,9 +193,13 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: ADMIN_PIN
           script: |
             set -euo pipefail
             cd /opt/goals
+            # Inject secrets into staging env file (upsert — remove old line then append)
+            sed -i '/^ADMIN_PIN=/d' /opt/goals/staging/.env
+            echo "ADMIN_PIN=${ADMIN_PIN}" >> /opt/goals/staging/.env
             git fetch origin ${{ github.head_ref }}
             git reset --hard origin/${{ github.head_ref }}
             APP_PORT=3101 docker compose \
@@ -218,9 +222,13 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: ADMIN_PIN
           script: |
             set -euo pipefail
             cd /opt/goals
+            # Inject secrets into prod env file (upsert — remove old line then append)
+            sed -i '/^ADMIN_PIN=/d' /opt/goals/prod/.env
+            echo "ADMIN_PIN=${ADMIN_PIN}" >> /opt/goals/prod/.env
             git fetch origin main
             git reset --hard origin/main
             APP_PORT=3100 docker compose \

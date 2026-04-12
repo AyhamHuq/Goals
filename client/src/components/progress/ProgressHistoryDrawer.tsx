@@ -82,7 +82,7 @@ function EditRow({
   );
 }
 
-export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false, currentUserId, selectedDay }: ProgressHistoryDrawerProps) {
+export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = false, currentUserId }: ProgressHistoryDrawerProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { data: entries = [], isLoading } = useProgress(open ? goal.id : undefined);

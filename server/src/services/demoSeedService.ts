@@ -13,10 +13,6 @@ function mulberry32(seed: number) {
 
 const rand = mulberry32(20240417);
 
-function randInt(min: number, max: number): number {
-  return Math.floor(rand() * (max - min + 1)) + min;
-}
-
 function randFloat(min: number, max: number, decimals = 1): number {
   const val = rand() * (max - min) + min;
   return parseFloat(val.toFixed(decimals));
@@ -32,11 +28,6 @@ function toDateStr(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function periodKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-}
 
 export async function seedDemoDatabase(): Promise<void> {
   const client = await pool.connect();
@@ -351,7 +342,7 @@ export async function seedDemoDatabase(): Promise<void> {
             if (def.goal_type === 'measurement') {
               // Measurement: trend toward target from start_value
               const start = def.start_value ?? def.target_value + 10;
-              const progress = rand(); // 0..1 progress toward goal
+              rand(); // advance RNG state (was: progress toward goal)
               value = randFloat(
                 Math.min(def.entry_min, start),
                 Math.max(def.entry_max, start)

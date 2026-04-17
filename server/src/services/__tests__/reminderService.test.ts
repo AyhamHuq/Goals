@@ -20,7 +20,7 @@ const mockQuery = pool.query as jest.Mock;
 const mockSendPush = sendPushNotification as jest.Mock;
 const mockGetStreak = getUserStreak as jest.Mock;
 
-const TODAY = new Date('2026-04-10T00:00:00Z');
+const TODAY = new Date(2026, 3, 10); // Apr 10 local time
 const TODAY_STR = '2026-04-10';
 
 const USER = { id: 'user-1', display_name: 'Alice' };
@@ -195,6 +195,26 @@ describe('sendDailyReminders — notification_log recording', () => {
     expect(insertCall[1]).toContain(USER.id);
     expect(insertCall[1]).toContain(TODAY_STR);
     expect(insertCall[1]).toContain('push_afternoon');
+  });
+});
+
+describe('sendDailyReminders — uses local date, not UTC', () => {
+  it('queries daily_completions with the local date string from the Date object', async () => {
+    // Create a date where getDate() returns local day — the function should use
+    // getFullYear/getMonth/getDate (local) not toISOString (UTC).
+    const localDate = new Date(2026, 3, 17, 22, 0, 0); // Apr 17, 10pm local
+    const expectedStr = '2026-04-17';
+
+    mockFullSend();
+    await sendDailyReminders(22, localDate);
+
+    // The completion check (2nd query) should use the local date
+    const completionCheckCall = mockQuery.mock.calls[1];
+    expect(completionCheckCall[1]).toContain(expectedStr);
+
+    // The notification_log check (3rd query) should also use local date
+    const notifCheckCall = mockQuery.mock.calls[2];
+    expect(notifCheckCall[1]).toContain(expectedStr);
   });
 });
 

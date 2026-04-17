@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: goals_demo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goals -d goals_demo"]
+
+  server:
+    environment:
+      DATABASE_URL: postgres://goals:${DB_PASSWORD:-goals}@db:5432/goals_demo
+      NODE_ENV: production
+      SEED_USERS: ${SEED_USERS:-Alex,Jordan,Sam,Riley,Morgan}
+      DEMO_SEED: "true"
+
+  client: {}

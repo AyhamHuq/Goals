@@ -13,8 +13,14 @@ async function start() {
   const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
   if (rows.length === 0) {
     console.log('No users found — seeding database...');
-    await seedDatabase();
-    console.log('Database seeded.');
+    if (process.env.DEMO_SEED === 'true') {
+      const { seedDemoDatabase } = await import('./services/demoSeedService.js');
+      await seedDemoDatabase();
+      console.log('Demo database seeded.');
+    } else {
+      await seedDatabase();
+      console.log('Database seeded.');
+    }
   }
 
   // Run push reminder check every hour at :00

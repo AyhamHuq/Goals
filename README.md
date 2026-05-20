@@ -64,10 +64,9 @@ Goals/
 │   └── init-sandbox.sql     # Creates goals_sandbox DB on first Postgres init
 │
 ├── docker-compose.yml           # Base: 3 services, healthchecks, env-var config
-├── docker-compose.prod.yml      # Override: pins client to port 3100
-├── docker-compose.staging.yml   # Override: goals_staging DB, port 3101
+├── docker-compose.prod.yml      # Override: production web-network alias
+├── docker-compose.staging.yml   # Override: goals_staging DB + staging web-network alias
 ├── docker-compose.sandbox.yml   # Override: goals_sandbox DB (local dev only)
-├── Caddyfile                    # Reverse proxy: routes domains to prod/staging ports
 ├── .env.example                 # All required vars
 └── dev.sh                       # Local dev setup script
 ```
@@ -108,37 +107,40 @@ Frontend: http://localhost:5173 · Backend: http://localhost:3001 · Health: htt
 
 ## Deployment
 
-The app runs on a single Hetzner CX23 server with two isolated environments — **staging** and **production** — sharing the same machine via Docker Compose project isolation.
+The app runs on a single Hetzner CX23 server with two isolated environments — **staging** and **production** — sharing the same machine via Docker Compose project isolation. Production is served at `https://goals.ayhamhuq.com`.
 
 ```
-https://yourname.duckdns.org       → prod    (Caddy → port 3100)
-https://yourname-staging.duckdns.org → staging (Caddy → port 3101)
+https://goals.ayhamhuq.com          → prod app    (Portfolio Caddy → goals prod client)
+https://admin-goals.ayhamhuq.com    → prod admin  (Portfolio Caddy → goals prod client)
+https://staging-goals.ayhamhuq.com  → staging app (Portfolio Caddy → goals staging client)
 ```
 
 Each environment is a fully independent Docker Compose project (`-p goals-prod` / `-p goals-staging`) with its own containers, network, volume, and database (`goals` / `goals_staging`).
 
+The admin dashboard is selected by hostname in the React app (`admin.*` or `admin-*`). It must be served from `admin-goals.ayhamhuq.com`; `/admin` on the main hostname will not load the admin UI. The hyphenated admin hostname keeps the DNS name at the first subdomain level so Cloudflare Universal SSL can cover it without Total TLS.
+
 ### CI/CD Flow
 
-- **Open/push to a PR** → tests run + auto-deploy to staging
-- **Merge to `main`** → auto-deploy to production
+- **Open/push to a PR** → tests run + auto-deploy to staging from the PR branch
+- **Merge to `main`** → tests run + auto-deploy to production
 
-### HTTPS Setup (DuckDNS + Caddy)
+### HTTPS Setup (Custom DNS + Caddy)
 
-Web Push requires HTTPS. The production host uses Caddy (installed on the host, not in Docker) with a free DuckDNS subdomain:
+Web Push requires HTTPS. Caddy is owned by the sibling Portfolio deployment and terminates TLS for the custom DNS names, then proxies to the Goals client containers on the shared Docker `web` network:
 
-1. Register a subdomain at [duckdns.org](https://www.duckdns.org) and point it at your server IP.
-2. Update the `Caddyfile` in the repo root with your subdomain and DuckDNS token.
-3. Install Caddy on the host and reload: `sudo systemctl reload caddy`.
+1. Point `goals.ayhamhuq.com` and `admin-goals.ayhamhuq.com` at the Hetzner server.
+2. Ensure the external Docker network exists: `docker network create web`.
+3. Update the sibling Portfolio repo's `Caddyfile`, then redeploy Portfolio or reload Caddy.
 
-Caddy handles TLS automatically via Let's Encrypt and reverse-proxies to the Docker containers on ports 3100 (prod) and 3101 (staging).
+Caddy handles TLS automatically via Let's Encrypt and reverse-proxies to the Goals client containers on the shared `web` network. The app containers do not publish host ports in production.
 
 ### First-Time Server Setup
 
 ```bash
 # Install Docker, clone repo, create env files
 mkdir -p /opt/goals/prod /opt/goals/staging
-# /opt/goals/prod/.env  — DB_PASSWORD, NODE_ENV=production, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
-# /opt/goals/staging/.env — DB_PASSWORD, NODE_ENV=staging, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
+# /opt/goals/prod/.env  — DB_PASSWORD, NODE_ENV=production, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL, ADMIN_PIN
+# /opt/goals/staging/.env — DB_PASSWORD, NODE_ENV=staging, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL, ADMIN_PIN
 
 docker compose -p goals-staging --env-file /opt/goals/staging/.env \
   -f docker-compose.yml -f docker-compose.staging.yml up -d --build
@@ -159,14 +161,15 @@ docker compose -p goals-prod exec server node -e "require('./dist/seed')"
 | `HETZNER_HOST` | Server IP |
 | `HETZNER_USER` | SSH username |
 | `HETZNER_SSH_KEY` | Private key contents (ed25519) |
+| `ADMIN_PIN` | PIN injected into prod/staging env files for admin dashboard login |
 
 ## API
 
-All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.md).
+Application endpoints are under `/api`; the server healthcheck is at `/health` on the backend origin. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 | Area | Key Endpoints |
 |------|--------------|
-| Health | `GET /health` — includes `sandbox: bool` field |
+| Health | `GET /health` on the server/backend origin; includes `sandbox: bool` and is used by Docker healthchecks |
 | Users | `GET /api/users`, `PATCH /api/users/:id/touch`, `PATCH /api/users/:id/preferences` |
 | Categories | `GET/POST /api/categories` |
 | Goals | `GET/POST /api/goals`, `PUT/DELETE /api/goals/:id`, `POST /api/goals/copy-from-previous` |
@@ -174,6 +177,7 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 | Dashboard | `GET /api/dashboard/personal`, `GET /api/dashboard/group` |
 | History | `GET /api/history`, `GET /api/history/:period_key` |
 | Push | `GET /api/push/vapid-public-key`, `POST /api/push/subscribe`, `DELETE /api/push/unsubscribe` |
+| Admin | `POST /api/admin/auth`, `GET /api/admin/check`, analytics/export endpoints under `/api/admin/*` |
 
 ## Key Design Decisions
 
@@ -181,20 +185,21 @@ All endpoints under `/api`. Full reference in [ARCHITECTURE.md](./ARCHITECTURE.m
 - **No cached progress**: `current_value` is always `SUM(progress_entries.value)` — computed server-side.
 - **Pacing computed server-side**: `dashboardService.ts` handles all frequency math so the client is purely presentational.
 - **Migrations on startup**: Server calls `runMigrations()` before `listen()` — zero manual steps in production.
-- **PWA push notifications**: `pushService.ts` sends Web Push via VAPID. Requires HTTPS (Caddy + DuckDNS on host). Users subscribe per-device; subscriptions stored in `push_subscriptions` table.
+- **PWA push notifications**: `pushService.ts` sends Web Push via VAPID. Requires HTTPS (Caddy + custom DNS). Users subscribe per-device; subscriptions stored in `push_subscriptions` table.
+- **Admin dashboard**: Served from `admin-goals.ayhamhuq.com` and protected by `ADMIN_PIN`; the same client container renders admin mode based on the hostname.
 
 ## Development Practices
 
 - TDD — tests first, then implementation
 - Feature branches only — never commit to main directly
-- PRs require: Summary (what) + Motivation (why), `AyhamHuq` as reviewer, Claude review comment
+- PRs require: Summary (what) + Motivation (why), `AyhamHuq` as reviewer, Codex review comment
 - Docs updated alongside code changes
 
 ## Roadmap
 
-- ~~**V2**: Custom domain + Caddy reverse proxy (HTTPS via Let's Encrypt, DuckDNS for free subdomain)~~ ✅ Done — Caddy + DuckDNS HTTPS active in production
+- ~~**V2**: Custom domain + Caddy reverse proxy (HTTPS via Let's Encrypt)~~ ✅ Done — `goals.ayhamhuq.com` active in production
 - ~~**V2**: PWA push notifications replacing Twilio SMS~~ ✅ Done — `web-push` + VAPID, service worker, `push_subscriptions` table
-- **V3**: Authentication (OAuth), admin role
+- **V3**: Authentication (OAuth) and stronger admin authorization
 - **V3**: Comments, pacing suggestions
 - **V4**: Category leaderboards, shared group goals
 - **V5**: Charts, heatmaps, PWA offline support

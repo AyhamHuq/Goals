@@ -13,6 +13,7 @@ Building a lightweight web app for a family of 5-7 people to set monthly goals, 
 - **Validation:** zod (server-side)
 - **Deployment:** Docker Compose (nginx + node + postgres)
 - **Notifications:** Web Push via `web-push` + VAPID (PWA service worker, `push_subscriptions` table)
+- **Production DNS:** `goals.ayhamhuq.com` for the app, `admin-goals.ayhamhuq.com` for the admin dashboard
 
 ## Database Schema
 
@@ -53,6 +54,7 @@ Both `percentage` and `on_track` (current >= expected) computed in `dashboardSer
 | Progress | `GET/POST /api/progress`, `PUT/DELETE /api/progress/:id` |
 | Dashboard | `GET /api/dashboard/personal`, `GET /api/dashboard/group` |
 | History | `GET /api/history`, `GET /api/history/:period_key` |
+| Admin | `POST /api/admin/auth`, `GET /api/admin/check`, analytics endpoints under `/api/admin/*` |
 
 ## Frontend Components
 
@@ -78,8 +80,10 @@ Mobile-first: BottomNav on mobile, full-width cards, fullScreen dialogs on small
 ```
 Goals/
 ├── docker-compose.yml              # 3 services with healthchecks, env-var config, restart policies
+├── docker-compose.prod.yml         # Production web-network alias
+├── docker-compose.staging.yml      # Staging DB/env + web-network alias
 ├── docker-compose.sandbox.yml      # Override: points server at goals_sandbox DB + sets SANDBOX=true
-├── .env.example                    # All required + optional vars (DB_PASSWORD, APP_PORT, VAPID_*)
+├── .env.example                    # All required + optional vars (DB_PASSWORD, VAPID_*, ADMIN_PIN)
 ├── dev.sh                          # Local development setup script (start|sandbox|stop|reset|...)
 ├── client/                     (Vite + React + MUI)
 │   ├── src/
@@ -131,7 +135,8 @@ Goals/
 | 8 | Polish (loading/empty/error states, UI) | ✅ Done |
 | 9 | Sandbox mode (isolated goals_sandbox DB) | ✅ Done |
 | 10 | Unit system overhaul — multi-unit logging, conversion constants, Professional Learning category | ✅ Done |
-| 11 | PWA push notifications — replaced Twilio SMS with Web Push (VAPID, service worker, push_subscriptions, DuckDNS + Caddy HTTPS) | ✅ Done |
+| 11 | PWA push notifications — replaced Twilio SMS with Web Push (VAPID, service worker, push_subscriptions, custom DNS + Caddy HTTPS) | ✅ Done |
+| 12 | Admin dashboard — hostname-gated admin UI and `/api/admin/*` analytics protected by `ADMIN_PIN` | ✅ Done |
 
 ## Verification
 
@@ -153,8 +158,10 @@ Goals/
 - `server/src/services/dashboardService.ts` — core business logic
 - `server/src/services/frequencyCalc.ts` — frequency math (56 unit tests)
 - `client/src/components/dashboard/PersonalDashboard.tsx` — primary user view
+- `client/src/components/admin/` — admin dashboard views loaded only on `admin.*` or `admin-*` hostnames
 - `client/src/theme.ts` — visual identity for the whole app
 - `docker-compose.yml` — deployment orchestration
+- Portfolio repo `Caddyfile` — production/staging DNS routing through the shared Docker `web` network
 
 ---
 
@@ -164,7 +171,7 @@ Goals/
 - ~~Twilio SMS notifications~~ ✅ Replaced by PWA Web Push — `pushService.ts`, `reminderService.ts`, node-cron scheduler, `push_subscriptions` table
 - ~~Streak tracking~~ ✅ Implemented — `streakService.ts`, driven by `daily_completions` table; retroactive repair supported
 - ~~Day-focused navigation~~ ✅ Implemented — day navigator in TopAppBar replaces month picker; dashboard filtered by selected day; "Done for today" button
-- Admin role (unlock/edit goals, manage users)
+- Stronger admin authorization and audit controls
 - Social features (comments, likes, encouragement feed)
 - Pacing suggestions
 - Category leaderboards, shared group goals

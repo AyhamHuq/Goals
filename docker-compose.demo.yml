@@ -14,4 +14,9 @@ services:
       SEED_USERS: ${SEED_USERS:-Alex,Jordan,Sam,Riley,Morgan}
       DEMO_SEED: "true"
 
-  client: {}
+  client:
+    networks:
+      goals-net: {}
+      web:
+        aliases:
+          - goals-demo-client

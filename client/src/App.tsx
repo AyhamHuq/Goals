@@ -7,6 +7,7 @@ import GroupDashboard from './components/dashboard/GroupDashboard';
 import HistoryView from './components/history/HistoryView';
 import { useUserContext } from './context/UserContext';
 import { CircularProgress, Box } from '@mui/material';
+import { isAdminHostname } from './utils/adminHost';
 
 // Admin pages (lazy-loaded, only bundled when accessed)
 const AdminAuthGate = lazy(() => import('./components/admin/AdminAuthGate'));
@@ -19,7 +20,7 @@ const AdminEngagement = lazy(() => import('./components/admin/AdminEngagement'))
 const AdminNotifications = lazy(() => import('./components/admin/AdminNotifications'));
 const AdminExport = lazy(() => import('./components/admin/AdminExport'));
 
-const isAdminSubdomain = window.location.hostname.startsWith('admin.');
+const isAdminSubdomain = isAdminHostname(window.location.hostname);
 
 function AdminApp() {
   return (

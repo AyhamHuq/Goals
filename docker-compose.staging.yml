@@ -14,4 +14,9 @@ services:
       DATABASE_URL: postgres://goals:${DB_PASSWORD:-goals}@db:5432/goals_staging
       NODE_ENV: staging
 
-  client: {}
+  client:
+    networks:
+      goals-net: {}
+      web:
+        aliases:
+          - goals-staging-client

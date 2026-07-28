@@ -258,7 +258,7 @@ export async function transitionExpiredChallenges(): Promise<void> {
     [today],
   );
 
-  for (const challenge of result.rows) {
+  for (const _challenge of result.rows) {
     if (config.adminUserId) {
       await sendPushNotification(
         config.adminUserId,

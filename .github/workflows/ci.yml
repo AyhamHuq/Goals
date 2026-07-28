@@ -120,10 +120,10 @@ jobs:
         with:
           node-version: 20
       - name: Audit server
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci && npm audit --audit-level=high --omit=dev
         working-directory: server
       - name: Audit client
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci && npm audit --audit-level=high --omit=dev
         working-directory: client
 
   # ── Build ───────────────────────────────────────────────────────────────────

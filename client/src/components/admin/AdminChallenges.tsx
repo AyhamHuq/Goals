@@ -17,30 +17,13 @@ import {
   usePickWinner,
   useCancelChallenge,
 } from '../../hooks/useAdmin';
-import { useAdminUsers } from '../../hooks/useAdmin';
-
-function defaultFrom(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return d.toISOString().split('T')[0];
-}
-
-function today(): string {
-  return new Date().toISOString().split('T')[0];
-}
 
 export default function AdminChallenges() {
   const [durationDays, setDurationDays] = useState(10);
   const [confirmWinner, setConfirmWinner] = useState<{ userId: string; name: string } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
-  // Get group_id from first user (single-family app)
-  const { data: users } = useAdminUsers(defaultFrom(), today());
-  const groupId = users?.[0]?.id ? undefined : undefined;
-
-  // We need the group_id — get it from the users list via a different approach
-  // Since admin users endpoint doesn't return group_id, we'll derive it from the API
-  // For now, let's use a simpler approach: fetch all users and use the first one's data
+  // Get group_id from users API on mount
   const [groupIdState, setGroupIdState] = useState<string | undefined>(undefined);
 
   // Use a direct fetch to get group_id on mount

@@ -133,6 +133,10 @@ export interface Challenge {
   winner_id: string | null;
   winner_name: string | null;
   awarded_at: string | null;
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
   created_at: string;
 }
 

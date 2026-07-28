@@ -79,6 +79,10 @@ export interface ActiveChallengeInfo {
   days_remaining: number;
   total_days: number;
   status: 'active' | 'judging';
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
 }
 
 export interface PersonalDashboardResponse {

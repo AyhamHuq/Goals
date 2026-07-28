@@ -72,9 +72,23 @@ export async function getAdminNotifications(): Promise<NotificationStats> {
 }
 
 // Challenge endpoints
-export async function createAdminChallenge(groupId: string, durationDays: number): Promise<Challenge> {
-  const res = await apiClient.post('/admin/challenges', { group_id: groupId, duration_days: durationDays }, { withCredentials: true });
+export async function createAdminChallenge(
+  groupId: string,
+  durationDays: number,
+  giftCardName?: string,
+  giftCardAmount?: string,
+): Promise<Challenge> {
+  const res = await apiClient.post('/admin/challenges', {
+    group_id: groupId,
+    duration_days: durationDays,
+    gift_card_name: giftCardName || undefined,
+    gift_card_amount: giftCardAmount || undefined,
+  }, { withCredentials: true });
   return res.data;
+}
+
+export async function setChallengeLeader(challengeId: string, userId: string): Promise<void> {
+  await apiClient.post(`/admin/challenges/${challengeId}/leader`, { user_id: userId }, { withCredentials: true });
 }
 
 export async function getCurrentChallenge(groupId: string): Promise<Challenge | null> {

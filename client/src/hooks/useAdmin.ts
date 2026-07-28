@@ -12,6 +12,7 @@ import {
   getChallengeActivity,
   createAdminChallenge,
   pickChallengeWinner,
+  setChallengeLeader,
   cancelAdminChallenge,
   getChallengeHistory,
 } from '../api/admin';
@@ -110,8 +111,9 @@ export function useChallengeHistory(groupId: string | undefined) {
 export function useCreateChallenge() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ groupId, durationDays }: { groupId: string; durationDays: number }) =>
-      createAdminChallenge(groupId, durationDays),
+    mutationFn: ({ groupId, durationDays, giftCardName, giftCardAmount }: {
+      groupId: string; durationDays: number; giftCardName?: string; giftCardAmount?: string;
+    }) => createAdminChallenge(groupId, durationDays, giftCardName, giftCardAmount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
     },
@@ -125,6 +127,18 @@ export function usePickWinner() {
       pickChallengeWinner(challengeId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
+    },
+  });
+}
+
+export function useSetLeader() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ challengeId, userId }: { challengeId: string; userId: string }) =>
+      setChallengeLeader(challengeId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

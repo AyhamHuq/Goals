@@ -219,7 +219,15 @@ export default function PersonalDashboard() {
           </Box>
           {data.active_challenge.status === 'active' && (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              Log consistently to win a gift card!
+              {data.active_challenge.gift_card_name
+                ? `Log consistently to win a ${data.active_challenge.gift_card_amount ? `$${data.active_challenge.gift_card_amount} ` : ''}${data.active_challenge.gift_card_name} gift card!`
+                : 'Log consistently to win a gift card!'}
+            </Typography>
+          )}
+          {data.active_challenge.leader_name && (
+            <Typography variant="caption" fontWeight={700} sx={{ mt: 0.5, display: 'block', color: '#FFB830' }}>
+              Current leader: {data.active_challenge.leader_name}
+              {data.active_challenge.leader_id === selectedUser?.id ? ' (You!)' : ''}
             </Typography>
           )}
         </Box>

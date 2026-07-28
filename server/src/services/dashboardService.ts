@@ -43,6 +43,10 @@ export interface ActiveChallengeInfo {
   days_remaining: number;
   total_days: number;
   status: 'active' | 'judging';
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
 }
 
 export interface PersonalDashboardResponse {
@@ -218,6 +222,10 @@ export async function getPersonalDashboard(
         days_remaining: activeChallenge.days_remaining,
         total_days: activeChallenge.total_days,
         status: activeChallenge.status,
+        gift_card_name: activeChallenge.gift_card_name,
+        gift_card_amount: activeChallenge.gift_card_amount,
+        leader_id: activeChallenge.leader_id,
+        leader_name: activeChallenge.leader_name,
       };
     }
   }

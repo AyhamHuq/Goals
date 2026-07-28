@@ -10,6 +10,10 @@ export interface Challenge {
   status: 'active' | 'judging' | 'completed' | 'cancelled';
   winner_id: string | null;
   awarded_at: string | null;
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
   created_at: string;
 }
 
@@ -61,7 +65,12 @@ function normalizeChallenge(row: Challenge): Challenge {
   };
 }
 
-export async function createChallenge(groupId: string, durationDays: number): Promise<Challenge> {
+export async function createChallenge(
+  groupId: string,
+  durationDays: number,
+  giftCardName?: string,
+  giftCardAmount?: string,
+): Promise<Challenge> {
   // Check for existing active/judging challenge
   const existing = await pool.query(
     `SELECT id, status FROM gift_card_challenges
@@ -80,10 +89,10 @@ export async function createChallenge(groupId: string, durationDays: number): Pr
   const endDate = endDateObj.toISOString().split('T')[0];
 
   const result = await pool.query(
-    `INSERT INTO gift_card_challenges (group_id, start_date, end_date)
-     VALUES ($1, $2, $3)
+    `INSERT INTO gift_card_challenges (group_id, start_date, end_date, gift_card_name, gift_card_amount)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [groupId, startDate, endDate],
+    [groupId, startDate, endDate, giftCardName || null, giftCardAmount || null],
   );
 
   const challenge = result.rows[0] as Challenge;
@@ -94,11 +103,15 @@ export async function createChallenge(groupId: string, durationDays: number): Pr
     [groupId],
   );
 
+  const prizeDesc = giftCardName
+    ? `a ${giftCardAmount ? `$${giftCardAmount} ` : ''}${giftCardName} gift card`
+    : 'a gift card';
+
   for (const user of usersResult.rows) {
     sendPushNotification(
       user.id,
       'Gift Card Challenge Started!',
-      `A new challenge has started! Log every day for the next ${durationDays} days for a chance to win a gift card.`,
+      `A new challenge has started! Log every day for the next ${durationDays} days for a chance to win ${prizeDesc}.`,
     ).catch(err => console.error('[Challenge] Notification failed:', err));
   }
 
@@ -236,6 +249,37 @@ export async function pickWinner(challengeId: string, winnerId: string): Promise
       `${winnerName} has been selected as the winner. Don't forget to send the gift card!`,
     );
   }
+}
+
+export async function setLeader(challengeId: string, leaderId: string): Promise<void> {
+  const challengeResult = await pool.query(
+    `SELECT * FROM gift_card_challenges WHERE id = $1`,
+    [challengeId],
+  );
+
+  if (challengeResult.rows.length === 0) {
+    throw new Error('Challenge not found');
+  }
+
+  const challenge = challengeResult.rows[0];
+  if (challenge.status !== 'active') {
+    throw new Error('Can only set leader on an active challenge');
+  }
+
+  // Get leader's display name
+  const userResult = await pool.query(
+    `SELECT display_name FROM users WHERE id = $1 AND group_id = $2`,
+    [leaderId, challenge.group_id],
+  );
+
+  if (userResult.rows.length === 0) {
+    throw new Error('Leader must be a member of the challenge group');
+  }
+
+  await pool.query(
+    `UPDATE gift_card_challenges SET leader_id = $2, leader_name = $3 WHERE id = $1`,
+    [challengeId, leaderId, userResult.rows[0].display_name],
+  );
 }
 
 export async function cancelChallenge(challengeId: string): Promise<void> {

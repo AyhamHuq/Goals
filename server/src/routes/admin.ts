@@ -6,6 +6,7 @@ import {
   getActiveChallenge,
   getChallengeActivityFeed,
   pickWinner,
+  setLeader,
   cancelChallenge,
   getChallengeHistory,
 } from '../services/challengeService';
@@ -130,7 +131,7 @@ router.get('/notifications', async (_req: Request, res: Response, next: NextFunc
 // POST /api/admin/challenges — create a new challenge
 router.post('/challenges', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { group_id, duration_days } = req.body;
+    const { group_id, duration_days, gift_card_name, gift_card_amount } = req.body;
     if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
       res.status(400).json({ error: 'Valid group_id (UUID) is required' });
       return;
@@ -139,7 +140,7 @@ router.post('/challenges', async (req: Request, res: Response, next: NextFunctio
       res.status(400).json({ error: 'duration_days must be an integer between 1 and 365' });
       return;
     }
-    const challenge = await createChallenge(group_id, duration_days);
+    const challenge = await createChallenge(group_id, duration_days, gift_card_name, gift_card_amount);
     res.status(201).json(challenge);
   } catch (err) {
     if (err instanceof Error && err.message.includes('already an active')) {
@@ -203,6 +204,33 @@ router.post('/challenges/:id/winner', async (req: Request, res: Response, next: 
       return;
     }
     if (err instanceof Error && err.message.includes('judging')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/leader — set the current leader
+router.post('/challenges/:id/leader', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
+    const { user_id } = req.body;
+    if (!user_id || typeof user_id !== 'string' || !UUID_RE.test(user_id)) {
+      res.status(400).json({ error: 'Valid user_id (UUID) is required' });
+      return;
+    }
+    await setLeader(req.params.id, user_id);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    if (err instanceof Error && (err.message.includes('active') || err.message.includes('member'))) {
       res.status(400).json({ error: err.message });
       return;
     }

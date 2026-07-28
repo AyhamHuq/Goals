@@ -10,8 +10,9 @@ import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SandboxBanner } from './components/SandboxBanner';
 import { registerServiceWorker } from './utils/pushNotifications';
+import { isAdminHostname } from './utils/adminHost';
 
-const isAdminSubdomain = window.location.hostname.startsWith('admin.');
+const isAdminSubdomain = isAdminHostname(window.location.hostname);
 
 const queryClient = new QueryClient({
   defaultOptions: {

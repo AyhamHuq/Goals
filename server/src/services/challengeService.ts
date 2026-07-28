@@ -50,6 +50,15 @@ function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+/** PostgreSQL DATE columns come back as Date objects — normalize to YYYY-MM-DD strings */
+function normalizeChallenge(row: any): Challenge {
+  return {
+    ...row,
+    start_date: typeof row.start_date === 'string' ? row.start_date : row.start_date.toISOString().split('T')[0],
+    end_date: typeof row.end_date === 'string' ? row.end_date : row.end_date.toISOString().split('T')[0],
+  };
+}
+
 export async function createChallenge(groupId: string, durationDays: number): Promise<Challenge> {
   // Check for existing active/judging challenge
   const existing = await pool.query(
@@ -105,7 +114,7 @@ export async function getActiveChallenge(groupId: string): Promise<ActiveChallen
 
   if (result.rows.length === 0) return null;
 
-  const challenge = result.rows[0] as Challenge;
+  const challenge = normalizeChallenge(result.rows[0]);
   const today = new Date();
   const endDate = new Date(challenge.end_date + 'T00:00:00Z');
   const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
@@ -124,7 +133,7 @@ export async function getChallengeActivityFeed(challengeId: string): Promise<Cha
     throw new Error('Challenge not found');
   }
 
-  const challenge = challengeResult.rows[0] as Challenge;
+  const challenge = normalizeChallenge(challengeResult.rows[0]);
   const totalDays = daysBetween(challenge.start_date, challenge.end_date);
 
   // Get all users in the group

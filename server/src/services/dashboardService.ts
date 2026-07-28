@@ -2,6 +2,7 @@ import { getDaysInMonth, parseISO, differenceInDays } from 'date-fns';
 import { pool } from '../db/pool';
 import { calcProgress } from './frequencyCalc';
 import { getUserStreak } from './streakService';
+import { getActiveChallenge } from './challengeService';
 import { FrequencyType, GoalType } from '../types';
 
 interface ProgressEntrySlim {
@@ -36,6 +37,14 @@ interface GoalWithProgress {
   liked_by: string[];
 }
 
+export interface ActiveChallengeInfo {
+  id: string;
+  end_date: string;
+  days_remaining: number;
+  total_days: number;
+  status: 'active' | 'judging';
+}
+
 export interface PersonalDashboardResponse {
   period_key: string;
   days_in_month: number;
@@ -45,6 +54,7 @@ export interface PersonalDashboardResponse {
   day_completed: boolean;
   selected_day: string;
   goals: GoalWithProgress[];
+  active_challenge: ActiveChallengeInfo | null;
 }
 
 export interface GroupDashboardUserEntry {
@@ -193,6 +203,25 @@ export async function getPersonalDashboard(
   );
   const dayCompleted = completionResult.rows.length > 0;
 
+  // Check for active gift card challenge
+  let activeChallengeInfo: ActiveChallengeInfo | null = null;
+  const userGroupResult = await pool.query(
+    `SELECT group_id FROM users WHERE id = $1`,
+    [userId],
+  );
+  if (userGroupResult.rows.length > 0) {
+    const activeChallenge = await getActiveChallenge(userGroupResult.rows[0].group_id);
+    if (activeChallenge && (activeChallenge.status === 'active' || activeChallenge.status === 'judging')) {
+      activeChallengeInfo = {
+        id: activeChallenge.id,
+        end_date: activeChallenge.end_date,
+        days_remaining: activeChallenge.days_remaining,
+        total_days: activeChallenge.total_days,
+        status: activeChallenge.status,
+      };
+    }
+  }
+
   return {
     period_key: periodKey,
     days_in_month: daysInMonth,
@@ -202,6 +231,7 @@ export async function getPersonalDashboard(
     day_completed: dayCompleted,
     selected_day: selectedDay,
     goals,
+    active_challenge: activeChallengeInfo,
   };
 }
 

@@ -1,6 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { adminLogin, adminLogout, adminGuard } from '../middleware/adminAuth';
 import * as analytics from '../services/adminAnalyticsService';
+import {
+  createChallenge,
+  getActiveChallenge,
+  getChallengeActivityFeed,
+  pickWinner,
+  cancelChallenge,
+  getChallengeHistory,
+} from '../services/challengeService';
 
 const router = Router();
 
@@ -112,6 +120,106 @@ router.get('/notifications', async (_req: Request, res: Response, next: NextFunc
   try {
     const data = await analytics.getNotificationStats();
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges — create a new challenge
+router.post('/challenges', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id, duration_days } = req.body;
+    if (!group_id || !duration_days || typeof duration_days !== 'number' || duration_days < 1) {
+      res.status(400).json({ error: 'group_id and duration_days (positive number) are required' });
+      return;
+    }
+    const challenge = await createChallenge(group_id, duration_days);
+    res.status(201).json(challenge);
+  } catch (err: any) {
+    if (err.message?.includes('already an active')) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/current?group_id=
+router.get('/challenges/current', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id } = req.query;
+    if (!group_id || typeof group_id !== 'string') {
+      res.status(400).json({ error: 'group_id is required' });
+      return;
+    }
+    const challenge = await getActiveChallenge(group_id);
+    res.json({ challenge });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/:id/activity — full activity feed for judging
+router.get('/challenges/:id/activity', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const feed = await getChallengeActivityFeed(req.params.id);
+    res.json(feed);
+  } catch (err: any) {
+    if (err.message?.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/winner — pick a winner
+router.post('/challenges/:id/winner', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id || typeof user_id !== 'string') {
+      res.status(400).json({ error: 'user_id is required' });
+      return;
+    }
+    await pickWinner(req.params.id, user_id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err.message?.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    if (err.message?.includes('judging')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/cancel — cancel a challenge
+router.post('/challenges/:id/cancel', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    await cancelChallenge(req.params.id);
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err.message?.includes('Cannot cancel')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/history?group_id=
+router.get('/challenges/history', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id } = req.query;
+    if (!group_id || typeof group_id !== 'string') {
+      res.status(400).json({ error: 'group_id is required' });
+      return;
+    }
+    const history = await getChallengeHistory(group_id);
+    res.json(history);
   } catch (err) {
     next(err);
   }

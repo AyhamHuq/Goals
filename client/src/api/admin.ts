@@ -8,6 +8,8 @@ import type {
   GoalDetail,
   EngagementStats,
   NotificationStats,
+  Challenge,
+  ChallengeActivityFeed,
 } from '../types/admin';
 
 export async function adminAuth(pin: string): Promise<void> {
@@ -66,5 +68,34 @@ export async function getAdminEngagement(from: string, to: string): Promise<Enga
 
 export async function getAdminNotifications(): Promise<NotificationStats> {
   const res = await apiClient.get('/admin/notifications', { withCredentials: true });
+  return res.data;
+}
+
+// Challenge endpoints
+export async function createAdminChallenge(groupId: string, durationDays: number): Promise<Challenge> {
+  const res = await apiClient.post('/admin/challenges', { group_id: groupId, duration_days: durationDays }, { withCredentials: true });
+  return res.data;
+}
+
+export async function getCurrentChallenge(groupId: string): Promise<Challenge | null> {
+  const res = await apiClient.get('/admin/challenges/current', { params: { group_id: groupId }, withCredentials: true });
+  return res.data.challenge;
+}
+
+export async function getChallengeActivity(challengeId: string): Promise<ChallengeActivityFeed> {
+  const res = await apiClient.get(`/admin/challenges/${challengeId}/activity`, { withCredentials: true });
+  return res.data;
+}
+
+export async function pickChallengeWinner(challengeId: string, userId: string): Promise<void> {
+  await apiClient.post(`/admin/challenges/${challengeId}/winner`, { user_id: userId }, { withCredentials: true });
+}
+
+export async function cancelAdminChallenge(challengeId: string): Promise<void> {
+  await apiClient.post(`/admin/challenges/${challengeId}/cancel`, {}, { withCredentials: true });
+}
+
+export async function getChallengeHistory(groupId: string): Promise<Challenge[]> {
+  const res = await apiClient.get('/admin/challenges/history', { params: { group_id: groupId }, withCredentials: true });
   return res.data;
 }

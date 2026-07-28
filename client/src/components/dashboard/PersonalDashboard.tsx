@@ -16,6 +16,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import WhatshotRoundedIcon from '@mui/icons-material/WhatshotRounded';
+import CardGiftcardRoundedIcon from '@mui/icons-material/CardGiftcardRounded';
 import { getHours } from 'date-fns';
 import { useUserContext } from '../../context/UserContext';
 import { usePeriodContext } from '../../context/PeriodContext';
@@ -187,6 +188,42 @@ export default function PersonalDashboard() {
   return (
     <Box sx={{ pb: showDoneBar ? '160px' : '8px' }}>
       <Celebration trigger={celebrating} />
+
+      {/* Gift Card Challenge Banner */}
+      {data?.active_challenge && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: '16px',
+            background: data.active_challenge.status === 'active'
+              ? (isDark
+                ? 'linear-gradient(135deg, rgba(255,184,48,0.15) 0%, rgba(255,107,107,0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(255,184,48,0.12) 0%, rgba(255,107,107,0.06) 100%)')
+              : (isDark
+                ? 'linear-gradient(135deg, rgba(108,92,231,0.15) 0%, rgba(162,155,254,0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(108,92,231,0.08) 0%, rgba(162,155,254,0.05) 100%)'),
+            border: '1px solid',
+            borderColor: data.active_challenge.status === 'active'
+              ? (isDark ? 'rgba(255,184,48,0.3)' : 'rgba(255,184,48,0.25)')
+              : (isDark ? 'rgba(108,92,231,0.3)' : 'rgba(108,92,231,0.2)'),
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <CardGiftcardRoundedIcon sx={{ color: data.active_challenge.status === 'active' ? '#FFB830' : '#6C5CE7', fontSize: 22 }} />
+            <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
+              {data.active_challenge.status === 'active'
+                ? `Gift Card Challenge: ${data.active_challenge.days_remaining} day${data.active_challenge.days_remaining !== 1 ? 's' : ''} left!`
+                : 'Challenge ended — winner will be announced soon!'}
+            </Typography>
+          </Box>
+          {data.active_challenge.status === 'active' && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Log consistently to win a gift card!
+            </Typography>
+          )}
+        </Box>
+      )}
 
       {/* Greeting header */}
       <Box

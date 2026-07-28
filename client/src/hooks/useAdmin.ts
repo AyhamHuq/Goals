@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getAdminOverview,
   getAdminTrends,
@@ -8,6 +8,12 @@ import {
   getAdminGoalDetail,
   getAdminEngagement,
   getAdminNotifications,
+  getCurrentChallenge,
+  getChallengeActivity,
+  createAdminChallenge,
+  pickChallengeWinner,
+  cancelAdminChallenge,
+  getChallengeHistory,
 } from '../api/admin';
 
 export function useAdminOverview(from: string, to: string) {
@@ -71,5 +77,64 @@ export function useAdminNotifications() {
     queryKey: ['admin', 'notifications'],
     queryFn: getAdminNotifications,
     staleTime: 60_000,
+  });
+}
+
+export function useCurrentChallenge(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'challenge', 'current', groupId],
+    queryFn: () => getCurrentChallenge(groupId!),
+    enabled: !!groupId,
+    staleTime: 30_000,
+  });
+}
+
+export function useChallengeActivity(challengeId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'challenge', 'activity', challengeId],
+    queryFn: () => getChallengeActivity(challengeId!),
+    enabled: !!challengeId,
+    staleTime: 30_000,
+  });
+}
+
+export function useChallengeHistory(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'challenge', 'history', groupId],
+    queryFn: () => getChallengeHistory(groupId!),
+    enabled: !!groupId,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateChallenge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, durationDays }: { groupId: string; durationDays: number }) =>
+      createAdminChallenge(groupId, durationDays),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
+    },
+  });
+}
+
+export function usePickWinner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ challengeId, userId }: { challengeId: string; userId: string }) =>
+      pickChallengeWinner(challengeId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
+    },
+  });
+}
+
+export function useCancelChallenge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (challengeId: string) => cancelAdminChallenge(challengeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'challenge'] });
+    },
   });
 }

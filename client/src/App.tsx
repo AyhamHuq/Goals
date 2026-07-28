@@ -19,6 +19,7 @@ const AdminGoalDetail = lazy(() => import('./components/admin/AdminGoalDetail'))
 const AdminEngagement = lazy(() => import('./components/admin/AdminEngagement'));
 const AdminNotifications = lazy(() => import('./components/admin/AdminNotifications'));
 const AdminExport = lazy(() => import('./components/admin/AdminExport'));
+const AdminChallenges = lazy(() => import('./components/admin/AdminChallenges'));
 
 const isAdminSubdomain = isAdminHostname(window.location.hostname);
 
@@ -35,6 +36,7 @@ function AdminApp() {
             <Route path="/goals/:id" element={<AdminGoalDetail />} />
             <Route path="/engagement" element={<AdminEngagement />} />
             <Route path="/notifications" element={<AdminNotifications />} />
+            <Route path="/challenges" element={<AdminChallenges />} />
             <Route path="/export" element={<AdminExport />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>

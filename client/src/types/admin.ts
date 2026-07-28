@@ -123,3 +123,41 @@ export interface NotificationStats {
 }
 
 export type TimeRange = '12h' | '1d' | '7d' | '30d' | '90d' | '1y' | 'all' | 'custom';
+
+export interface Challenge {
+  id: string;
+  group_id: string;
+  start_date: string;
+  end_date: string;
+  status: 'active' | 'judging' | 'completed' | 'cancelled';
+  winner_id: string | null;
+  winner_name: string | null;
+  awarded_at: string | null;
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
+  created_at: string;
+}
+
+export interface ChallengeUserActivity {
+  user_id: string;
+  display_name: string;
+  avatar_color: string;
+  days_logged: number;
+  total_days: number;
+  completions: string[];
+  progress_entries: Array<{
+    id: string;
+    goal_title: string;
+    value: number;
+    logged_for: string;
+    note: string | null;
+    unit: string;
+  }>;
+}
+
+export interface ChallengeActivityFeed {
+  challenge: Challenge;
+  users: ChallengeUserActivity[];
+}

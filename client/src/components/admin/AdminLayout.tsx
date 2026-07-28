@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   Dashboard, People, BarChart, FileDownload, Menu as MenuIcon,
-  AdminPanelSettings, Logout, Notifications,
+  AdminPanelSettings, Logout, Notifications, CardGiftcard,
 } from '@mui/icons-material';
 import { adminLogout } from '../../api/admin';
 
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { path: '/users', label: 'Users', icon: People },
   { path: '/engagement', label: 'Engagement', icon: BarChart },
   { path: '/notifications', label: 'Notifications', icon: Notifications },
+  { path: '/challenges', label: 'Challenges', icon: CardGiftcard },
   { path: '/export', label: 'Export', icon: FileDownload },
 ];
 

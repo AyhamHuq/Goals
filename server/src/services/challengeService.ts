@@ -51,11 +51,13 @@ function todayStr(): string {
 }
 
 /** PostgreSQL DATE columns come back as Date objects — normalize to YYYY-MM-DD strings */
-function normalizeChallenge(row: any): Challenge {
+function normalizeChallenge(row: Challenge): Challenge {
+  const startDate = row.start_date as unknown;
+  const endDate = row.end_date as unknown;
   return {
     ...row,
-    start_date: typeof row.start_date === 'string' ? row.start_date : row.start_date.toISOString().split('T')[0],
-    end_date: typeof row.end_date === 'string' ? row.end_date : row.end_date.toISOString().split('T')[0],
+    start_date: typeof startDate === 'string' ? startDate : (startDate as Date).toISOString().split('T')[0],
+    end_date: typeof endDate === 'string' ? endDate : (endDate as Date).toISOString().split('T')[0],
   };
 }
 
@@ -267,14 +269,12 @@ export async function transitionExpiredChallenges(): Promise<void> {
     [today],
   );
 
-  for (const _challenge of result.rows) {
-    if (config.adminUserId) {
-      await sendPushNotification(
-        config.adminUserId,
-        'Challenge Ended!',
-        'The gift card challenge has ended! Time to review activity and pick a winner.',
-      );
-    }
+  if (result.rows.length > 0 && config.adminUserId) {
+    await sendPushNotification(
+      config.adminUserId,
+      'Challenge Ended!',
+      'The gift card challenge has ended! Time to review activity and pick a winner.',
+    );
   }
 }
 

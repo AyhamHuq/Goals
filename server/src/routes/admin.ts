@@ -141,8 +141,8 @@ router.post('/challenges', async (req: Request, res: Response, next: NextFunctio
     }
     const challenge = await createChallenge(group_id, duration_days);
     res.status(201).json(challenge);
-  } catch (err: any) {
-    if (err.message?.includes('already an active')) {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('already an active')) {
       res.status(409).json({ error: err.message });
       return;
     }
@@ -174,8 +174,8 @@ router.get('/challenges/:id/activity', async (req: Request, res: Response, next:
     }
     const feed = await getChallengeActivityFeed(req.params.id);
     res.json(feed);
-  } catch (err: any) {
-    if (err.message?.includes('not found')) {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
       res.status(404).json({ error: err.message });
       return;
     }
@@ -197,12 +197,12 @@ router.post('/challenges/:id/winner', async (req: Request, res: Response, next: 
     }
     await pickWinner(req.params.id, user_id);
     res.json({ ok: true });
-  } catch (err: any) {
-    if (err.message?.includes('not found')) {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
       res.status(404).json({ error: err.message });
       return;
     }
-    if (err.message?.includes('judging')) {
+    if (err instanceof Error && err.message.includes('judging')) {
       res.status(400).json({ error: err.message });
       return;
     }
@@ -219,8 +219,8 @@ router.post('/challenges/:id/cancel', async (req: Request, res: Response, next: 
     }
     await cancelChallenge(req.params.id);
     res.json({ ok: true });
-  } catch (err: any) {
-    if (err.message?.includes('Cannot cancel')) {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Cannot cancel')) {
       res.status(400).json({ error: err.message });
       return;
     }

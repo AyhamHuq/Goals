@@ -1,8 +1,19 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { adminLogin, adminLogout, adminGuard } from '../middleware/adminAuth';
 import * as analytics from '../services/adminAnalyticsService';
+import {
+  createChallenge,
+  getActiveChallenge,
+  getChallengeActivityFeed,
+  pickWinner,
+  setLeader,
+  cancelChallenge,
+  getChallengeHistory,
+} from '../services/challengeService';
 
 const router = Router();
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // POST /api/admin/auth — no guard
 router.post('/auth', (req: Request, res: Response) => {
@@ -112,6 +123,149 @@ router.get('/notifications', async (_req: Request, res: Response, next: NextFunc
   try {
     const data = await analytics.getNotificationStats();
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges — create a new challenge
+router.post('/challenges', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id, duration_days, gift_card_name, gift_card_amount } = req.body;
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
+      return;
+    }
+    if (!duration_days || typeof duration_days !== 'number' || !Number.isInteger(duration_days) || duration_days < 1 || duration_days > 365) {
+      res.status(400).json({ error: 'duration_days must be an integer between 1 and 365' });
+      return;
+    }
+    const challenge = await createChallenge(group_id, duration_days, gift_card_name, gift_card_amount);
+    res.status(201).json(challenge);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('already an active')) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/current?group_id=
+router.get('/challenges/current', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id } = req.query;
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
+      return;
+    }
+    const challenge = await getActiveChallenge(group_id);
+    res.json({ challenge });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/:id/activity — full activity feed for judging
+router.get('/challenges/:id/activity', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
+    const feed = await getChallengeActivityFeed(req.params.id);
+    res.json(feed);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/winner — pick a winner
+router.post('/challenges/:id/winner', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
+    const { user_id } = req.body;
+    if (!user_id || typeof user_id !== 'string' || !UUID_RE.test(user_id)) {
+      res.status(400).json({ error: 'Valid user_id (UUID) is required' });
+      return;
+    }
+    await pickWinner(req.params.id, user_id);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    if (err instanceof Error && err.message.includes('judging')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/leader — set the current leader
+router.post('/challenges/:id/leader', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
+    const { user_id } = req.body;
+    if (!user_id || typeof user_id !== 'string' || !UUID_RE.test(user_id)) {
+      res.status(400).json({ error: 'Valid user_id (UUID) is required' });
+      return;
+    }
+    await setLeader(req.params.id, user_id);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    if (err instanceof Error && (err.message.includes('active') || err.message.includes('member'))) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// POST /api/admin/challenges/:id/cancel — cancel a challenge
+router.post('/challenges/:id/cancel', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
+    await cancelChallenge(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Cannot cancel')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// GET /api/admin/challenges/history?group_id=
+router.get('/challenges/history', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { group_id } = req.query;
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
+      return;
+    }
+    const history = await getChallengeHistory(group_id);
+    res.json(history);
   } catch (err) {
     next(err);
   }

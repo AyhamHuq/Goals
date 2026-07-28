@@ -4,6 +4,10 @@ jest.mock('../../db/pool', () => ({
   pool: { query: jest.fn() },
 }));
 
+jest.mock('../challengeService', () => ({
+  getActiveChallenge: jest.fn().mockResolvedValue(null),
+}));
+
 import { pool } from '../../db/pool';
 const mockQuery = pool.query as jest.Mock;
 
@@ -52,7 +56,9 @@ describe('getPersonalDashboard', () => {
       // Q6: streak
       .mockResolvedValueOnce({ rows: [{ completed_date: '2026-04-10' }, { completed_date: '2026-04-09' }] })
       // Q7: day_completed
-      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
+      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] })
+      // Q8: user group_id
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] });
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
 
@@ -79,7 +85,8 @@ describe('getPersonalDashboard', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [] }) // no goals
       .mockResolvedValueOnce({ rows: [] }) // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed (no row)
+      .mockResolvedValueOnce({ rows: [] }) // day_completed (no row)
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     expect(result.day_completed).toBe(false);
@@ -95,7 +102,8 @@ describe('getPersonalDashboard', () => {
       .mockResolvedValueOnce({ rows: [] })  // day_entries
       .mockResolvedValueOnce({ rows: [] })  // batch likes
       .mockResolvedValueOnce({ rows: [] })  // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed
+      .mockResolvedValueOnce({ rows: [] }) // day_completed
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -107,7 +115,8 @@ describe('getPersonalDashboard', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [] }) // goals
       .mockResolvedValueOnce({ rows: [] }) // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed
+      .mockResolvedValueOnce({ rows: [] }) // day_completed
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     expect(result.goals).toHaveLength(0);
     expect(result.day_completed).toBe(false);
@@ -134,7 +143,8 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [] })  // day_entries
       .mockResolvedValueOnce({ rows: [] })  // batch likes
       .mockResolvedValueOnce({ rows: [] })  // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed
+      .mockResolvedValueOnce({ rows: [] }) // day_completed
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -158,7 +168,8 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [] }) // day_entries
       .mockResolvedValueOnce({ rows: [] }) // batch likes
       .mockResolvedValueOnce({ rows: [] }) // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed
+      .mockResolvedValueOnce({ rows: [] }) // day_completed
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     const goal = result.goals[0];
@@ -180,7 +191,8 @@ describe('getPersonalDashboard — measurement goal', () => {
       .mockResolvedValueOnce({ rows: [] }) // day_entries
       .mockResolvedValueOnce({ rows: [] }) // batch likes
       .mockResolvedValueOnce({ rows: [] }) // streak
-      .mockResolvedValueOnce({ rows: [] }); // day_completed
+      .mockResolvedValueOnce({ rows: [] }) // day_completed
+      .mockResolvedValueOnce({ rows: [{ group_id: GROUP_ID }] }); // user group_id
 
     const result = await getPersonalDashboard(USER_ID, PERIOD, REF_DATE);
     expect(result.goals[0].expected_value).toBeCloseTo(85);

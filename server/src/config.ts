@@ -7,4 +7,5 @@ export const config = {
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
   vapidEmail: process.env.VAPID_EMAIL || 'mailto:admin@example.com',
   adminPin: process.env.ADMIN_PIN || '',
+  adminUserId: process.env.ADMIN_USER_ID || '',
 };

@@ -6,6 +6,7 @@ import { runMigrations } from './db/migrate';
 import { pool } from './db/pool';
 import { seedDatabase } from './services/seedService';
 import { sendDailyReminders } from './services/reminderService';
+import { transitionExpiredChallenges } from './services/challengeService';
 
 async function start() {
   await runMigrations();
@@ -32,6 +33,15 @@ async function start() {
       await sendDailyReminders(currentHour, now);
     } catch (err) {
       console.error('[Cron] Reminder job failed:', err);
+    }
+
+    // Check for expired challenges once daily at midnight
+    if (currentHour === 0) {
+      try {
+        await transitionExpiredChallenges();
+      } catch (err) {
+        console.error('[Cron] Challenge transition failed:', err);
+      }
     }
   });
 

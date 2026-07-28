@@ -73,6 +73,18 @@ export interface GoalWithProgress {
   liked_by: string[];
 }
 
+export interface ActiveChallengeInfo {
+  id: string;
+  end_date: string;
+  days_remaining: number;
+  total_days: number;
+  status: 'active' | 'judging';
+  gift_card_name: string | null;
+  gift_card_amount: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
+}
+
 export interface PersonalDashboardResponse {
   period_key: string;
   days_in_month: number;
@@ -82,6 +94,7 @@ export interface PersonalDashboardResponse {
   day_completed: boolean;
   selected_day: string;
   goals: GoalWithProgress[];
+  active_challenge: ActiveChallengeInfo | null;
 }
 
 export interface UserGoalSummary {

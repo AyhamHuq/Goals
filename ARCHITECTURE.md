@@ -99,7 +99,7 @@ GET /health
 → { status: 'ok', sandbox: false, timestamp: '2026-04-04T...' }
 ```
 
-Used by Docker healthcheck and load balancers.
+Used by the Docker healthcheck and local backend checks. In production, Caddy routes public DNS to the client container, so `https://goals.ayhamhuq.com/health` is handled by the React SPA unless the proxy is extended to expose backend health directly.
 
 ### Users
 
@@ -355,27 +355,29 @@ Both environments run on the same Hetzner CX23 using Docker Compose project isol
 Host (Hetzner CX23)
 │
 ├── Docker project: goals-prod   (compose -p goals-prod -f docker-compose.yml -f docker-compose.prod.yml)
-│   ├── client/nginx  :80   (host-bound) ← http://server-ip
+│   ├── client/nginx  :80   (Docker web alias: goals-prod-client)
 │   ├── server        :3001 (internal only)
 │   └── db            :5432 (internal only)   database: goals
 │
 └── Docker project: goals-staging (compose -p goals-staging -f docker-compose.yml -f docker-compose.staging.yml)
-    ├── client/nginx  :3101 (host-bound) ← http://server-ip:3101
-    ├── server        :3002 (internal only)
-    └── db            :5433 (internal only)   database: goals_staging
+    ├── client/nginx  :80   (Docker web alias: goals-staging-client)
+    ├── server        :3001 (internal only)
+    └── db            :5432 (internal only)   database: goals_staging
 ```
 
 The `-p` (project name) flag gives each stack its own namespaced containers, network, and volume (`goals-prod_pgdata` vs `goals-staging_pgdata`), so the two environments are fully isolated at the data layer.
 
-A `Caddyfile` is included in the repo and used in production for HTTPS termination via Caddy + DuckDNS (host-level, not inside Docker). Caddy reverse-proxies the DuckDNS subdomain to the prod client port (3100) and the staging subdomain to port 3101. HTTPS is required for the Web Push API and the PWA service worker.
+Caddy is owned by the sibling Portfolio deployment and terminates HTTPS on the shared Docker `web` network. Production serves `goals.ayhamhuq.com` and `admin-goals.ayhamhuq.com`, both reverse-proxied to the production Goals client container. Staging can use `staging-goals.ayhamhuq.com` and `admin-staging-goals.ayhamhuq.com`, both reverse-proxied to the staging Goals client container. HTTPS is required for the Web Push API and the PWA service worker.
+
+The admin dashboard is intentionally hostname-based: the React app enters admin mode when the hostname starts with `admin.` or `admin-`. That means `admin-goals.ayhamhuq.com` is the production admin entrypoint; `/admin` on `goals.ayhamhuq.com` is not an admin route. The production admin name is hyphenated so it remains a first-level subdomain covered by Cloudflare Universal SSL.
 
 ### Per-Environment Docker Compose
 
 | File | Purpose |
 |------|---------|
 | `docker-compose.yml` | Base: 3 services, healthchecks, shared config |
-| `docker-compose.prod.yml` | Override: pins client to port 3100 |
-| `docker-compose.staging.yml` | Override: port 3101, `goals_staging` DB, `NODE_ENV=staging` |
+| `docker-compose.prod.yml` | Override: adds the `goals-prod-client` alias on the external `web` network |
+| `docker-compose.staging.yml` | Override: `goals_staging` DB, `NODE_ENV=staging`, and `goals-staging-client` alias |
 | `docker-compose.sandbox.yml` | Local dev only: `goals_sandbox` DB, `SANDBOX=true` |
 
 ### Single-Stack Internal Architecture
@@ -384,7 +386,7 @@ A `Caddyfile` is included in the repo and used in production for HTTPS terminati
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │    nginx      │────▶│   Express    │────▶│  Postgres 16 │
 │   (client)    │     │   (server)   │     │    (db)      │
-│  :3100/3101   │     │    :3001     │     │   :5432      │
+│      :80      │     │    :3001     │     │   :5432      │
 └──────────────┘     └──────────────┘     └──────────────┘
        │
        ├── Serves React build (static files)
@@ -401,10 +403,10 @@ Defined in `.github/workflows/ci.yml`:
 | Trigger | Jobs run |
 |---------|----------|
 | PR to `main` | All test/lint/typecheck/build jobs |
-| Push to `main` (merged PR) | All jobs + `deploy-staging` (auto SSH deploy) |
-| `workflow_dispatch` (manual) | `deploy-prod` only (manual SSH deploy) |
+| PR to `main` | All jobs + `deploy-staging` from the PR branch |
+| Push to `main` (merged PR) | All jobs + `deploy-prod` |
 
-Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker compose up -d --build`.
+Deploy jobs SSH into the server, reset `/opt/goals` to the deployed ref (`github.head_ref` for staging, `main` for production), and run `docker compose up -d --build --remove-orphans`.
 
 ### Environment Variables
 
@@ -415,8 +417,8 @@ Deploy jobs SSH into the server, `git reset --hard origin/main`, and run `docker
 | `VAPID_PUBLIC_KEY` | — | VAPID public key for Web Push (generate with `npx web-push generate-vapid-keys`) |
 | `VAPID_PRIVATE_KEY` | — | VAPID private key for Web Push |
 | `VAPID_EMAIL` | — | Contact email sent with Web Push requests (e.g. `mailto:you@example.com`) |
-| `APP_PORT` | `3100` | Host port the client container binds to (overridden per environment in compose override files) |
 | `TZ` | `America/New_York` | Server timezone for reminder scheduling |
+| `ADMIN_PIN` | — | PIN required by `/api/admin/auth` for the admin dashboard |
 
 ## Key Dependencies
 

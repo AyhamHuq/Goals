@@ -58,6 +58,6 @@ services:
       server:
         condition: service_healthy
     networks:
-      - goals-net
-      - web
+      goals-net: {}
+      web: {}
     restart: unless-stopped

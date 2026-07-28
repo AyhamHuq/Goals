@@ -145,6 +145,10 @@ describe('pickWinner', () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ id: CHALLENGE_ID, group_id: GROUP_ID, status: 'judging' }],
     });
+    // Verify winner is in group
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: USER_ID }],
+    });
     // Update challenge
     mockQuery.mockResolvedValueOnce({
       rows: [{ id: CHALLENGE_ID, winner_id: USER_ID, status: 'completed' }],
@@ -161,6 +165,16 @@ describe('pickWinner', () => {
       expect.stringContaining('Congratulations'),
       expect.any(String),
     );
+  });
+
+  it('throws when winner is not in the challenge group', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: CHALLENGE_ID, group_id: GROUP_ID, status: 'judging' }],
+    });
+    // Membership check returns empty — user not in group
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    await expect(pickWinner(CHALLENGE_ID, 'other-user')).rejects.toThrow('member of the challenge group');
   });
 
   it('throws when challenge is not in judging status', async () => {

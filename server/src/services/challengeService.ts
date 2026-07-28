@@ -185,6 +185,15 @@ export async function pickWinner(challengeId: string, winnerId: string): Promise
     throw new Error('Challenge must be in judging status to pick a winner');
   }
 
+  // Verify winner belongs to the challenge's group
+  const memberCheck = await pool.query(
+    `SELECT id FROM users WHERE id = $1 AND group_id = $2`,
+    [winnerId, challenge.group_id],
+  );
+  if (memberCheck.rows.length === 0) {
+    throw new Error('Winner must be a member of the challenge group');
+  }
+
   await pool.query(
     `UPDATE gift_card_challenges
      SET winner_id = $2, awarded_at = NOW(), status = 'completed'

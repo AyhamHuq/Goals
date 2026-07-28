@@ -12,6 +12,8 @@ import {
 
 const router = Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // POST /api/admin/auth — no guard
 router.post('/auth', (req: Request, res: Response) => {
   adminLogin(req, res);
@@ -129,8 +131,12 @@ router.get('/notifications', async (_req: Request, res: Response, next: NextFunc
 router.post('/challenges', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { group_id, duration_days } = req.body;
-    if (!group_id || !duration_days || typeof duration_days !== 'number' || duration_days < 1) {
-      res.status(400).json({ error: 'group_id and duration_days (positive number) are required' });
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
+      return;
+    }
+    if (!duration_days || typeof duration_days !== 'number' || !Number.isInteger(duration_days) || duration_days < 1 || duration_days > 365) {
+      res.status(400).json({ error: 'duration_days must be an integer between 1 and 365' });
       return;
     }
     const challenge = await createChallenge(group_id, duration_days);
@@ -148,8 +154,8 @@ router.post('/challenges', async (req: Request, res: Response, next: NextFunctio
 router.get('/challenges/current', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { group_id } = req.query;
-    if (!group_id || typeof group_id !== 'string') {
-      res.status(400).json({ error: 'group_id is required' });
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
       return;
     }
     const challenge = await getActiveChallenge(group_id);
@@ -162,6 +168,10 @@ router.get('/challenges/current', async (req: Request, res: Response, next: Next
 // GET /api/admin/challenges/:id/activity — full activity feed for judging
 router.get('/challenges/:id/activity', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
     const feed = await getChallengeActivityFeed(req.params.id);
     res.json(feed);
   } catch (err: any) {
@@ -176,9 +186,13 @@ router.get('/challenges/:id/activity', async (req: Request, res: Response, next:
 // POST /api/admin/challenges/:id/winner — pick a winner
 router.post('/challenges/:id/winner', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
     const { user_id } = req.body;
-    if (!user_id || typeof user_id !== 'string') {
-      res.status(400).json({ error: 'user_id is required' });
+    if (!user_id || typeof user_id !== 'string' || !UUID_RE.test(user_id)) {
+      res.status(400).json({ error: 'Valid user_id (UUID) is required' });
       return;
     }
     await pickWinner(req.params.id, user_id);
@@ -199,6 +213,10 @@ router.post('/challenges/:id/winner', async (req: Request, res: Response, next: 
 // POST /api/admin/challenges/:id/cancel — cancel a challenge
 router.post('/challenges/:id/cancel', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!UUID_RE.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid challenge ID' });
+      return;
+    }
     await cancelChallenge(req.params.id);
     res.json({ ok: true });
   } catch (err: any) {
@@ -214,8 +232,8 @@ router.post('/challenges/:id/cancel', async (req: Request, res: Response, next: 
 router.get('/challenges/history', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { group_id } = req.query;
-    if (!group_id || typeof group_id !== 'string') {
-      res.status(400).json({ error: 'group_id is required' });
+    if (!group_id || typeof group_id !== 'string' || !UUID_RE.test(group_id)) {
+      res.status(400).json({ error: 'Valid group_id (UUID) is required' });
       return;
     }
     const history = await getChallengeHistory(group_id);

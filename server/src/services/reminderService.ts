@@ -24,7 +24,7 @@ export async function sendDailyReminders(currentHour: number, today: Date): Prom
   const window = WINDOWS.find((w) => w.hour === currentHour);
   if (!window) return;
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const usersResult = await pool.query<EligibleUser>(
     `SELECT id, display_name FROM users WHERE push_reminders_enabled = true`,

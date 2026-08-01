@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton,
+  Box, AppBar, Toolbar, Typography, Drawer, SwipeableDrawer, List, ListItemButton,
   ListItemIcon, ListItemText, IconButton, Divider, useTheme, useMediaQuery, Tooltip,
 } from '@mui/material';
 import {
@@ -108,15 +108,17 @@ export default function AdminLayout() {
         </Drawer>
       )}
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — SwipeableDrawer for reliable backdrop tap on iOS */}
       {isMobile && (
-        <Drawer
+        <SwipeableDrawer
           open={drawerOpen}
+          onOpen={() => setDrawerOpen(true)}
           onClose={() => setDrawerOpen(false)}
+          disableSwipeToOpen
           sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
         >
           {drawerContent}
-        </Drawer>
+        </SwipeableDrawer>
       )}
 
       {/* Main content */}

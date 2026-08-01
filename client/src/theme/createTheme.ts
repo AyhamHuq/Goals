@@ -62,7 +62,7 @@ export function createAppTheme(mode: 'light' | 'dark') {
     components: {
       MuiCssBaseline: {
         styleOverrides: `
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
           * { -webkit-tap-highlight-color: transparent; }
           html { scroll-behavior: smooth; }
         `,

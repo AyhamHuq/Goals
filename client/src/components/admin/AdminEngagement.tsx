@@ -58,7 +58,7 @@ export default function AdminEngagement() {
         )}
       </Paper>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         {/* Hour of day */}
         <Grid item xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -86,7 +86,7 @@ export default function AdminEngagement() {
         </Grid>
       </Grid>
 
-      <Grid container spacing={2}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
         {/* Category breakdown */}
         <Grid item xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>

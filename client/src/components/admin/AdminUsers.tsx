@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TableSortLabel, Avatar, Chip, Skeleton, Tooltip,
-  LinearProgress,
+  LinearProgress, Card, CardContent, useMediaQuery, useTheme,
 } from '@mui/material';
 import { NotificationsActive, NotificationsOff, LocalFireDepartment } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +36,73 @@ function SortableCell({
   );
 }
 
+function UserCard({ user, onClick }: { user: AdminUser; onClick: () => void }) {
+  const completionColor = user.avg_completion >= 80 ? '#00C9A7' : user.avg_completion >= 50 ? '#FFB830' : '#FF6B6B';
+  return (
+    <Card
+      onClick={onClick}
+      sx={{ cursor: 'pointer', '&:active': { transform: 'scale(0.98)' }, transition: 'transform 0.1s' }}
+    >
+      <CardContent sx={{ pb: '12px !important' }}>
+        <Box display="flex" alignItems="center" gap={1.5} mb={1.5}>
+          <Avatar sx={{ width: 40, height: 40, bgcolor: user.avatar_color, fontSize: 16 }}>
+            {user.display_name[0]}
+          </Avatar>
+          <Box flex={1} minWidth={0}>
+            <Typography variant="body1" fontWeight={700} noWrap>{user.display_name}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {user.last_active_at
+                ? `Active ${formatDistanceToNow(new Date(user.last_active_at), { addSuffix: true })}`
+                : 'Never active'}
+            </Typography>
+          </Box>
+          {user.push_reminders_enabled
+            ? <NotificationsActive sx={{ fontSize: 18, color: '#00C9A7' }} />
+            : <NotificationsOff sx={{ fontSize: 18, color: 'text.disabled' }} />}
+        </Box>
+        <Box display="flex" gap={2} flexWrap="wrap">
+          <Box>
+            <Typography variant="caption" color="text.secondary" display="block">Goals</Typography>
+            <Typography variant="body2" fontWeight={700}>{user.goals_count}</Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" display="block">Entries</Typography>
+            <Typography variant="body2" fontWeight={700}>{user.entries_count}</Typography>
+          </Box>
+          <Box flex={1} minWidth={60}>
+            <Typography variant="caption" color="text.secondary" display="block">Avg %</Typography>
+            <Box display="flex" alignItems="center" gap={1}>
+              <LinearProgress
+                variant="determinate"
+                value={user.avg_completion}
+                sx={{
+                  flex: 1, height: 6, borderRadius: 3, bgcolor: 'action.hover',
+                  '& .MuiLinearProgress-bar': { bgcolor: completionColor },
+                }}
+              />
+              <Typography variant="body2" fontWeight={700} sx={{ minWidth: 32 }}>{user.avg_completion}%</Typography>
+            </Box>
+          </Box>
+          {user.streak > 0 && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">Streak</Typography>
+              <Chip
+                icon={<LocalFireDepartment sx={{ fontSize: '14px !important' }} />}
+                label={user.streak}
+                size="small"
+                sx={{ bgcolor: '#FF6B6B22', color: '#FF6B6B', fontWeight: 700, height: 22 }}
+              />
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminUsers() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [range, setRange] = useState<TimeRange>('30d');
   const [from, setFrom] = useState(() => daysAgo(30));
   const [to, setTo] = useState(today);
@@ -71,91 +137,105 @@ export default function AdminUsers() {
         <TimeRangeFilter from={from} to={to} range={range} onRangeChange={(r, f, t) => { setRange(r); setFrom(f); setTo(t); }} />
       </Box>
 
-      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ '& th': { bgcolor: 'background.default' } }}>
-              <SortableCell field="display_name" label="User" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="goals_count" label="Goals" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="entries_count" label="Entries" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="avg_completion" label="Avg %" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="streak" label="Streak" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="likes_given" label="Likes Given" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="likes_received" label="Likes Recv" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <SortableCell field="period_count" label="Months" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <TableCell sx={{ fontWeight: 600 }}>Push</TableCell>
-              <SortableCell field="last_active_at" label="Last Active" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((__, j) => (
-                    <TableCell key={j}><Skeleton /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-              : sorted.map(user => (
-                <TableRow
-                  key={user.id}
-                  hover
-                  onClick={() => navigate(`/users/${user.id}`)}
-                  sx={{ cursor: 'pointer' }}
-                >
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar sx={{ width: 28, height: 28, bgcolor: user.avatar_color, fontSize: 12 }}>
-                        {user.display_name[0]}
-                      </Avatar>
-                      <Typography variant="body2" fontWeight={500}>{user.display_name}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>{user.goals_count}</TableCell>
-                  <TableCell>{user.entries_count}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LinearProgress
-                        variant="determinate"
-                        value={user.avg_completion}
-                        sx={{ width: 50, height: 6, borderRadius: 3, bgcolor: 'action.hover',
-                          '& .MuiLinearProgress-bar': { bgcolor: user.avg_completion >= 80 ? '#00C9A7' : user.avg_completion >= 50 ? '#FFB830' : '#FF6B6B' } }}
-                      />
-                      <Typography variant="body2">{user.avg_completion}%</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    {user.streak > 0 && (
-                      <Chip
-                        icon={<LocalFireDepartment sx={{ fontSize: '14px !important' }} />}
-                        label={user.streak}
-                        size="small"
-                        sx={{ bgcolor: '#FF6B6B22', color: '#FF6B6B', fontWeight: 700, height: 22 }}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>{user.likes_given}</TableCell>
-                  <TableCell>{user.likes_received}</TableCell>
-                  <TableCell>{user.period_count}</TableCell>
-                  <TableCell>
-                    <Tooltip title={user.push_reminders_enabled ? 'Reminders on' : 'Reminders off'}>
-                      {user.push_reminders_enabled
-                        ? <NotificationsActive sx={{ fontSize: 18, color: '#00C9A7' }} />
-                        : <NotificationsOff sx={{ fontSize: 18, color: 'text.disabled' }} />}
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {user.last_active_at
-                        ? formatDistanceToNow(new Date(user.last_active_at), { addSuffix: true })
-                        : '—'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* Mobile: card layout */}
+      {isMobile ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}><CardContent><Skeleton height={80} /></CardContent></Card>
+            ))
+            : sorted.map(user => (
+              <UserCard key={user.id} user={user} onClick={() => navigate(`/users/${user.id}`)} />
+            ))}
+        </Box>
+      ) : (
+        /* Desktop: full table */
+        <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ '& th': { bgcolor: 'background.default' } }}>
+                <SortableCell field="display_name" label="User" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="goals_count" label="Goals" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="entries_count" label="Entries" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="avg_completion" label="Avg %" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="streak" label="Streak" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="likes_given" label="Likes Given" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="likes_received" label="Likes Recv" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableCell field="period_count" label="Months" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <TableCell sx={{ fontWeight: 600 }}>Push</TableCell>
+                <SortableCell field="last_active_at" label="Last Active" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 10 }).map((__, j) => (
+                      <TableCell key={j}><Skeleton /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+                : sorted.map(user => (
+                  <TableRow
+                    key={user.id}
+                    hover
+                    onClick={() => navigate(`/users/${user.id}`)}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar sx={{ width: 28, height: 28, bgcolor: user.avatar_color, fontSize: 12 }}>
+                          {user.display_name[0]}
+                        </Avatar>
+                        <Typography variant="body2" fontWeight={500}>{user.display_name}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>{user.goals_count}</TableCell>
+                    <TableCell>{user.entries_count}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={user.avg_completion}
+                          sx={{ width: 50, height: 6, borderRadius: 3, bgcolor: 'action.hover',
+                            '& .MuiLinearProgress-bar': { bgcolor: user.avg_completion >= 80 ? '#00C9A7' : user.avg_completion >= 50 ? '#FFB830' : '#FF6B6B' } }}
+                        />
+                        <Typography variant="body2">{user.avg_completion}%</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {user.streak > 0 && (
+                        <Chip
+                          icon={<LocalFireDepartment sx={{ fontSize: '14px !important' }} />}
+                          label={user.streak}
+                          size="small"
+                          sx={{ bgcolor: '#FF6B6B22', color: '#FF6B6B', fontWeight: 700, height: 22 }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>{user.likes_given}</TableCell>
+                    <TableCell>{user.likes_received}</TableCell>
+                    <TableCell>{user.period_count}</TableCell>
+                    <TableCell>
+                      <Tooltip title={user.push_reminders_enabled ? 'Reminders on' : 'Reminders off'}>
+                        {user.push_reminders_enabled
+                          ? <NotificationsActive sx={{ fontSize: 18, color: '#00C9A7' }} />
+                          : <NotificationsOff sx={{ fontSize: 18, color: 'text.disabled' }} />}
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        {user.last_active_at
+                          ? formatDistanceToNow(new Date(user.last_active_at), { addSuffix: true })
+                          : '—'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Box>
   );
 }

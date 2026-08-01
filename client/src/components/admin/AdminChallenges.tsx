@@ -4,6 +4,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert, LinearProgress,
   Divider, Stack, IconButton, Tooltip, Select, MenuItem, InputLabel, FormControl,
+  useMediaQuery, useTheme,
 } from '@mui/material';
 import {
   EmojiEvents, CardGiftcard, Timer, Cancel, CheckCircle,
@@ -31,6 +32,8 @@ function today(): string {
 }
 
 export default function AdminChallenges() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [durationDays, setDurationDays] = useState(10);
   const [giftCardName, setGiftCardName] = useState('');
   const [giftCardAmount, setGiftCardAmount] = useState('');
@@ -138,14 +141,14 @@ export default function AdminChallenges() {
               At the end, you review activity and pick a winner.
             </Typography>
             <Stack spacing={2}>
-              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} flexWrap="wrap" useFlexGap>
                 <TextField
                   type="number"
                   label="Duration (days)"
                   value={durationDays}
                   onChange={e => setDurationDays(Math.max(1, Number(e.target.value)))}
                   size="small"
-                  sx={{ width: 150 }}
+                  sx={{ width: { xs: '100%', sm: 150 } }}
                   inputProps={{ min: 1, max: 90 }}
                 />
                 <TextField
@@ -154,7 +157,7 @@ export default function AdminChallenges() {
                   value={giftCardName}
                   onChange={e => setGiftCardName(e.target.value)}
                   size="small"
-                  sx={{ width: 200 }}
+                  sx={{ width: { xs: '100%', sm: 200 } }}
                 />
                 <TextField
                   label="Amount"
@@ -162,7 +165,7 @@ export default function AdminChallenges() {
                   value={giftCardAmount}
                   onChange={e => setGiftCardAmount(e.target.value)}
                   size="small"
-                  sx={{ width: 120 }}
+                  sx={{ width: { xs: '100%', sm: 120 } }}
                   InputProps={{ startAdornment: <Typography sx={{ mr: 0.5, color: 'text.secondary' }}>$</Typography> }}
                 />
               </Stack>
@@ -223,8 +226,8 @@ export default function AdminChallenges() {
                 No leader set yet
               </Typography>
             )}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-              <FormControl size="small" sx={{ minWidth: 180 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} sx={{ mt: 1 }}>
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
                 <InputLabel>Set Leader</InputLabel>
                 <Select
                   value={selectedLeader}
@@ -280,59 +283,24 @@ export default function AdminChallenges() {
             {loadingActivity ? (
               <LinearProgress />
             ) : activityFeed ? (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Player</TableCell>
-                      <TableCell align="center">Days Logged</TableCell>
-                      <TableCell align="center">Consistency</TableCell>
-                      <TableCell>Completions</TableCell>
-                      <TableCell align="center">Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {activityFeed.users.map(user => (
-                      <React.Fragment key={user.user_id}>
-                        <TableRow>
-                          <TableCell>
-                            <Stack direction="row" alignItems="center" spacing={1}>
-                              <Avatar sx={{ bgcolor: user.avatar_color, width: 28, height: 28, fontSize: 14 }}>
-                                {user.display_name[0]}
-                              </Avatar>
-                              <Typography variant="body2" fontWeight={600}>{user.display_name}</Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Typography variant="body2" fontWeight={700}>
-                              {user.days_logged} / {user.total_days}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <LinearProgress
-                              variant="determinate"
-                              value={(user.days_logged / user.total_days) * 100}
-                              sx={{ height: 8, borderRadius: 4, minWidth: 80 }}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              {Math.round((user.days_logged / user.total_days) * 100)}%
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                              {user.completions.map(date => (
-                                <Chip
-                                  key={date}
-                                  label={date.slice(5)}
-                                  size="small"
-                                  color="success"
-                                  variant="outlined"
-                                  sx={{ fontSize: 11 }}
-                                />
-                              ))}
-                            </Stack>
-                          </TableCell>
-                          <TableCell align="center">
+              isMobile ? (
+                /* Mobile: card-based activity feed */
+                <Stack spacing={1.5}>
+                  {activityFeed.users.map(user => {
+                    const consistency = Math.round((user.days_logged / user.total_days) * 100);
+                    return (
+                      <Card key={user.user_id} variant="outlined">
+                        <CardContent sx={{ pb: '12px !important' }}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            <Avatar sx={{ bgcolor: user.avatar_color, width: 36, height: 36, fontSize: 16 }}>
+                              {user.display_name[0]}
+                            </Avatar>
+                            <Box flex={1}>
+                              <Typography variant="body2" fontWeight={700}>{user.display_name}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {user.days_logged} / {user.total_days} days · {consistency}%
+                              </Typography>
+                            </Box>
                             <Tooltip title={`Pick ${user.display_name} as winner`}>
                               <IconButton
                                 color="primary"
@@ -342,29 +310,112 @@ export default function AdminChallenges() {
                                 <EmojiEvents />
                               </IconButton>
                             </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                        {user.progress_entries.length > 0 && (
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={consistency}
+                            sx={{ height: 8, borderRadius: 4, mb: 1 }}
+                          />
+                          {user.completions.length > 0 && (
+                            <Box display="flex" gap={0.5} flexWrap="wrap">
+                              {user.completions.map(date => (
+                                <Chip key={date} label={date.slice(5)} size="small" color="success" variant="outlined" sx={{ fontSize: 11 }} />
+                              ))}
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                /* Desktop: table */
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Player</TableCell>
+                        <TableCell align="center">Days Logged</TableCell>
+                        <TableCell align="center">Consistency</TableCell>
+                        <TableCell>Completions</TableCell>
+                        <TableCell align="center">Action</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {activityFeed.users.map(user => (
+                        <React.Fragment key={user.user_id}>
                           <TableRow>
-                            <TableCell colSpan={5} sx={{ py: 0.5, pl: 6 }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Recent activity:{' '}
-                                {user.progress_entries.slice(0, 5).map((e, i) => (
-                                  <span key={e.id}>
-                                    {i > 0 && ' | '}
-                                    {e.goal_title}: {e.value} {e.unit} ({e.logged_for.slice(5)})
-                                    {e.note && ` - "${e.note}"`}
-                                  </span>
-                                ))}
+                            <TableCell>
+                              <Stack direction="row" alignItems="center" spacing={1}>
+                                <Avatar sx={{ bgcolor: user.avatar_color, width: 28, height: 28, fontSize: 14 }}>
+                                  {user.display_name[0]}
+                                </Avatar>
+                                <Typography variant="body2" fontWeight={600}>{user.display_name}</Typography>
+                              </Stack>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Typography variant="body2" fontWeight={700}>
+                                {user.days_logged} / {user.total_days}
                               </Typography>
                             </TableCell>
+                            <TableCell align="center">
+                              <LinearProgress
+                                variant="determinate"
+                                value={(user.days_logged / user.total_days) * 100}
+                                sx={{ height: 8, borderRadius: 4, minWidth: 80 }}
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                {Math.round((user.days_logged / user.total_days) * 100)}%
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                {user.completions.map(date => (
+                                  <Chip
+                                    key={date}
+                                    label={date.slice(5)}
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ fontSize: 11 }}
+                                  />
+                                ))}
+                              </Stack>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title={`Pick ${user.display_name} as winner`}>
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => setConfirmWinner({ userId: user.user_id, name: user.display_name })}
+                                  disabled={pickWinnerMutation.isPending}
+                                >
+                                  <EmojiEvents />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
                           </TableRow>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          {user.progress_entries.length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} sx={{ py: 0.5, pl: 6 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Recent activity:{' '}
+                                  {user.progress_entries.slice(0, 5).map((e, i) => (
+                                    <span key={e.id}>
+                                      {i > 0 && ' | '}
+                                      {e.goal_title}: {e.value} {e.unit} ({e.logged_for.slice(5)})
+                                      {e.note && ` - "${e.note}"`}
+                                    </span>
+                                  ))}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )
             ) : null}
 
             <Button
@@ -388,8 +439,8 @@ export default function AdminChallenges() {
           <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <History /> Past Challenges
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
+          <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: { xs: 480, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Period</TableCell>

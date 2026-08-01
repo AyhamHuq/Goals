@@ -108,18 +108,16 @@ export default function AdminLayout() {
         </Drawer>
       )}
 
-      {/* Mobile drawer — SwipeableDrawer for reliable backdrop tap on iOS */}
-      {isMobile && (
-        <SwipeableDrawer
-          open={drawerOpen}
-          onOpen={() => setDrawerOpen(true)}
-          onClose={() => setDrawerOpen(false)}
-          disableSwipeToOpen
-          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
-        >
-          {drawerContent}
-        </SwipeableDrawer>
-      )}
+      {/* Mobile drawer — always mounted so Modal backdrop cleans up properly */}
+      <SwipeableDrawer
+        open={isMobile && drawerOpen}
+        onOpen={() => setDrawerOpen(true)}
+        onClose={() => setDrawerOpen(false)}
+        disableSwipeToOpen
+        sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
+      >
+        {drawerContent}
+      </SwipeableDrawer>
 
       {/* Main content */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>

@@ -42,16 +42,16 @@ export default function AdminOverview() {
       </Box>
 
       {/* Stat cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
         {[
-          { label: 'Total Users', value: overview?.totalUsers, icon: People, color: '#6C5CE7', subtext: `${overview?.activeUsers ?? '—'} active in range` },
-          { label: 'Goals Created', value: overview?.goalsCreated, icon: TrackChanges, color: '#00C9A7', subtext: `${overview?.totalGoals ?? '—'} total` },
-          { label: 'Entries Logged', value: overview?.entriesLogged, icon: TrendingUp, color: '#FFB830', subtext: `${overview?.avgEntriesPerUser ?? '—'} avg/user` },
-          { label: 'Avg Completion', value: overview ? `${overview.completionRate}%` : undefined, icon: CheckCircle, color: '#00C9A7', subtext: 'goals at target' },
-          { label: 'Total Likes', value: overview?.totalLikes, icon: Favorite, color: '#FF6B6B' },
-          { label: 'Days Completed', value: overview?.totalDailyCompletions, icon: Timeline, color: '#a29bfe', subtext: 'in range' },
+          { label: 'Users', value: overview?.totalUsers, icon: People, color: '#6C5CE7', subtext: `${overview?.activeUsers ?? '—'} active` },
+          { label: 'Goals', value: overview?.goalsCreated, icon: TrackChanges, color: '#00C9A7', subtext: `${overview?.totalGoals ?? '—'} total` },
+          { label: 'Entries', value: overview?.entriesLogged, icon: TrendingUp, color: '#FFB830', subtext: `${overview?.avgEntriesPerUser ?? '—'} avg/user` },
+          { label: 'Completion', value: overview ? `${overview.completionRate}%` : undefined, icon: CheckCircle, color: '#00C9A7', subtext: 'at target' },
+          { label: 'Likes', value: overview?.totalLikes, icon: Favorite, color: '#FF6B6B' },
+          { label: 'Days Done', value: overview?.totalDailyCompletions, icon: Timeline, color: '#a29bfe', subtext: 'in range' },
         ].map((card, i) => (
-          <Grid item xs={6} sm={4} md={2} key={i}>
+          <Grid item xs={4} sm={4} md={2} key={i}>
             <StatCard {...card} loading={overviewLoading} />
           </Grid>
         ))}

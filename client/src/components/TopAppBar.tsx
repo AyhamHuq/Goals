@@ -188,10 +188,11 @@ export default function TopAppBar() {
           <IconButton
             onClick={goToPreviousDay}
             size="small"
+            aria-label="Previous day"
             sx={{
               color: isToday ? 'text.secondary' : 'warning.main',
-              minWidth: 36,
-              minHeight: 36,
+              minWidth: 40,
+              minHeight: 40,
               borderRadius: '50%',
             }}
           >
@@ -226,10 +227,11 @@ export default function TopAppBar() {
             onClick={goToNextDay}
             disabled={isToday}
             size="small"
+            aria-label="Next day"
             sx={{
               color: isToday ? 'text.disabled' : 'text.secondary',
-              minWidth: 36,
-              minHeight: 36,
+              minWidth: 40,
+              minHeight: 40,
               borderRadius: '50%',
             }}
           >
@@ -241,6 +243,7 @@ export default function TopAppBar() {
 
         {/* Segmented control — Personal / Group */}
         <Box
+          role="tablist"
           sx={{
             display: 'flex',
             bgcolor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
@@ -254,9 +257,18 @@ export default function TopAppBar() {
             return (
               <Box
                 key={label}
+                role="tab"
+                tabIndex={0}
+                aria-selected={active}
                 onClick={() => navigate(idx === 0 ? '/dashboard' : '/group')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(idx === 0 ? '/dashboard' : '/group');
+                  }
+                }}
                 sx={{
-                  px: { xs: 1.5, sm: 2 },
+                  px: { xs: 1.25, sm: 2 },
                   py: 0.6,
                   borderRadius: '100px',
                   fontSize: { xs: '0.72rem', sm: '0.78rem' },
@@ -272,6 +284,11 @@ export default function TopAppBar() {
                     ? (isDark ? '0 2px 8px rgba(108,92,231,0.4)' : '0 1px 4px rgba(0,0,0,0.12)')
                     : 'none',
                   '&:active': { transform: 'scale(0.95)' },
+                  outline: 'none',
+                  '&:focus-visible': {
+                    outline: `2px solid ${isDark ? '#A29BFE' : '#6C5CE7'}`,
+                    outlineOffset: 1,
+                  },
                 }}
               >
                 {label}

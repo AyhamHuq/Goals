@@ -35,34 +35,52 @@ const PRESETS: Array<{ label: string; value: TimeRange; from: () => string; to: 
 
 export default function TimeRangeFilter({ from, to, range, onRangeChange }: Props) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-      {PRESETS.map(p => (
-        <Button
-          key={p.value}
-          size="small"
-          variant={range === p.value ? 'contained' : 'outlined'}
-          onClick={() => onRangeChange(p.value, p.from(), p.to())}
-          sx={{
-            borderRadius: 2,
-            minWidth: 40,
-            fontWeight: range === p.value ? 700 : 400,
-            ...(range === p.value && {
-              background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)',
-              border: 'none',
-            }),
-          }}
-        >
-          {p.label}
-        </Button>
-      ))}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      {/* Preset buttons — scrollable row on mobile */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 0.75,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          pb: 0.5,
+          mx: { xs: -0.5, sm: 0 },
+          px: { xs: 0.5, sm: 0 },
+          // Hide scrollbar
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
+      >
+        {PRESETS.map(p => (
+          <Button
+            key={p.value}
+            size="small"
+            variant={range === p.value ? 'contained' : 'outlined'}
+            onClick={() => onRangeChange(p.value, p.from(), p.to())}
+            sx={{
+              borderRadius: 2,
+              minWidth: 40,
+              flexShrink: 0,
+              fontWeight: range === p.value ? 700 : 400,
+              ...(range === p.value && {
+                background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)',
+                border: 'none',
+              }),
+            }}
+          >
+            {p.label}
+          </Button>
+        ))}
+      </Box>
+      {/* Custom date range */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="body2" color="text.secondary">Custom:</Typography>
         <TextField
           type="date"
           size="small"
           value={from}
           onChange={e => onRangeChange('custom', e.target.value, to)}
-          sx={{ width: 140 }}
+          sx={{ width: { xs: 130, sm: 140 }, flex: { xs: '1 1 120px', sm: '0 0 140px' } }}
           InputLabelProps={{ shrink: true }}
         />
         <Typography variant="body2" color="text.secondary">–</Typography>
@@ -71,7 +89,7 @@ export default function TimeRangeFilter({ from, to, range, onRangeChange }: Prop
           size="small"
           value={to}
           onChange={e => onRangeChange('custom', from, e.target.value)}
-          sx={{ width: 140 }}
+          sx={{ width: { xs: 130, sm: 140 }, flex: { xs: '1 1 120px', sm: '0 0 140px' } }}
           InputLabelProps={{ shrink: true }}
         />
       </Box>

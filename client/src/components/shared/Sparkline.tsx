@@ -53,10 +53,12 @@ export default function Sparkline({
 
   return (
     <svg
-      width={width}
+      width="100%"
       height={height}
       viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
       overflow="visible"
+      style={{ display: 'block' }}
     >
       {filled && (
         <defs>

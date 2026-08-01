@@ -241,7 +241,7 @@ export default function ProgressHistoryDrawer({ open, onClose, goal, readOnly = 
               </Typography>
               <Sparkline
                 data={sparklineData}
-                width={280}
+                width={320}
                 height={48}
                 color="#6C5CE7"
                 filled

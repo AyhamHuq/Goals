@@ -9,6 +9,7 @@ import {
   Tooltip,
   CircularProgress,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -116,6 +117,7 @@ export default function PersonalDashboard() {
   const { selectedUser } = useUserContext();
   const { selectedDay, periodKey, isCurrentPeriod, isToday } = usePeriodContext();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isDark = theme.palette.mode === 'dark';
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -186,7 +188,7 @@ export default function PersonalDashboard() {
   }
 
   return (
-    <Box sx={{ pb: showDoneBar ? '160px' : '8px' }}>
+    <Box sx={{ pb: showDoneBar ? '72px' : 0 }}>
       <Celebration trigger={celebrating} />
 
       {/* Gift Card Challenge Banner */}
@@ -441,12 +443,15 @@ export default function PersonalDashboard() {
         <Box
           sx={{
             position: 'fixed',
-            bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+            bottom: isMobile
+              ? 'calc(60px + env(safe-area-inset-bottom, 0px))'
+              : 0,
             left: 0,
             right: 0,
             zIndex: 1099,
             px: 2,
             py: 1,
+            pb: isMobile ? 1 : 'max(8px, env(safe-area-inset-bottom, 0px))',
             background: isDark ? 'rgba(15,15,20,0.92)' : 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',

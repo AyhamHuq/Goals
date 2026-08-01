@@ -32,28 +32,34 @@ export default function StatCard({ label, value, icon: Icon, color, subtext, loa
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography variant="body2" color="text.secondary" fontWeight={500} gutterBottom>
+        <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+          <Typography variant="body2" color="text.secondary" fontWeight={500} gutterBottom noWrap>
             {label}
           </Typography>
           {loading ? (
-            <Skeleton width={80} height={36} />
+            <Skeleton width={60} height={32} />
           ) : (
-            <Typography variant="h4" fontWeight={700} lineHeight={1}>
+            <Typography
+              variant="h4"
+              fontWeight={700}
+              lineHeight={1}
+              sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
+              noWrap
+            >
               {value ?? '—'}
             </Typography>
           )}
           {subtext && !loading && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }} noWrap>
               {subtext}
             </Typography>
           )}
         </Box>
         <Box
           sx={{
-            width: 44, height: 44, borderRadius: 2,
+            width: { xs: 36, sm: 44 }, height: { xs: 36, sm: 44 }, borderRadius: 2,
             background: `${color}22`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: { xs: 'none', sm: 'flex' }, alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}
         >

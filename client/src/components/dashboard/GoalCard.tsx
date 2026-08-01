@@ -236,51 +236,51 @@ export default function GoalCard({ goal, readOnly = false, selectedDay, animatio
             </Box>
           )}
 
-          {/* Values text */}
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ mb: 1, fontSize: '0.72rem', lineHeight: 1.45 }}
-          >
-            {goal.goal_type === 'measurement'
-              ? `${fmtValue(displayCurrentValue)} → ${fmtValue(displayTargetValue)} ${displayUnit}${
-                  displayExpected !== null ? ` · ${fmtValue(displayExpected)} expected` : ''
-                }`
-              : `${fmtValue(displayMonthly.current)} / ${approx}${fmtValue(displayMonthly.monthlyTarget)} ${displayMonthly.unit}${
-                  displayMonthly.expected !== null ? ` · ${fmtValue(displayMonthly.expected)} expected` : ''
-                }`
-            }
-          </Typography>
-
-          {/* Unit toggle chip */}
-          {unitOptions.length > 1 && (
-            <Box
-              component="span"
-              onClick={(e) => {
-                e.stopPropagation();
-                const idx = unitOptions.indexOf(displayUnit);
-                setDisplayUnit(unitOptions[(idx + 1) % unitOptions.length]);
-              }}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                mb: 0.75,
-                px: 1,
-                py: 0.25,
-                borderRadius: '100px',
-                border: '1px solid',
-                borderColor: 'divider',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                color: 'text.secondary',
-                cursor: 'pointer',
-                width: 'fit-content',
-                '&:hover': { borderColor: 'text.secondary' },
-              }}
+          {/* Values text + unit toggle */}
+          <Box display="flex" alignItems="center" gap={0.75} mb={1} flexWrap="wrap">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: '0.72rem', lineHeight: 1.45 }}
             >
-              {displayUnit} ↕
-            </Box>
-          )}
+              {goal.goal_type === 'measurement'
+                ? `${fmtValue(displayCurrentValue)} → ${fmtValue(displayTargetValue)} ${displayUnit}${
+                    displayExpected !== null ? ` · ${fmtValue(displayExpected)} expected` : ''
+                  }`
+                : `${fmtValue(displayMonthly.current)} / ${approx}${fmtValue(displayMonthly.monthlyTarget)} ${displayMonthly.unit}${
+                    displayMonthly.expected !== null ? ` · ${fmtValue(displayMonthly.expected)} expected` : ''
+                  }`
+              }
+            </Typography>
+            {unitOptions.length > 1 && (
+              <Box
+                component="span"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const idx = unitOptions.indexOf(displayUnit);
+                  setDisplayUnit(unitOptions[(idx + 1) % unitOptions.length]);
+                }}
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  px: 1.25,
+                  py: 0.4,
+                  borderRadius: '100px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  cursor: 'pointer',
+                  minHeight: 28,
+                  '&:hover': { borderColor: 'text.secondary' },
+                  '&:active': { transform: 'scale(0.95)' },
+                }}
+              >
+                {displayUnit} ↕
+              </Box>
+            )}
+          </Box>
 
           {/* Thin progress bar at bottom */}
           <LinearProgress
